@@ -84,7 +84,7 @@ doppler:
   url: 'wss://doppler.example.com:443'
 
 uaa:
-  url: "http://localhost:8080/uaa"
+  url: "http://localhost:6789"
   internal_url: "http://localhost:6789"
   resource_id: "cloud_controller"
   symmetric_secret: "tokensecret"

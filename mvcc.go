@@ -19,8 +19,6 @@ const (
 	DefaultDialInterval = 200 * time.Millisecond
 )
 
-var validToken string = `bearer eyJhbGciOiJSUzI1NiIsImtpZCI6ImtleS0xIiwidHlwIjoiSldUIn0.eyJqdGkiOiI5YmUxODkyYzcyYTM0NzJkOGY4MGQxMWZjOTgyNTc4NCIsInN1YiI6IjRkM2UwNGIxLWY4OWYtNDM3MC1hZGE3LTcwZThkMWI3ZjNjMSIsInNjb3BlIjpbImNsb3VkX2NvbnRyb2xsZXIucmVhZCIsInBhc3N3b3JkLndyaXRlIiwiY2xvdWRfY29udHJvbGxlci53cml0ZSIsIm9wZW5pZCIsInVhYS51c2VyIl0sImNsaWVudF9pZCI6ImNmIiwiY2lkIjoiY2YiLCJhenAiOiJjZiIsImdyYW50X3R5cGUiOiJwYXNzd29yZCIsInVzZXJfaWQiOiI0ZDNlMDRiMS1mODlmLTQzNzAtYWRhNy03MGU4ZDFiN2YzYzEiLCJvcmlnaW4iOiJ1YWEiLCJ1c2VyX25hbWUiOiJmb28iLCJlbWFpbCI6ImZvbyIsInJldl9zaWciOiI2NjZhNjUxMCIsImlhdCI6MTUyOTUyMjg5MywiZXhwIjoxNTI5NTIzNDkzLCJpc3MiOiJodHRwczovL3VhYS5mb3NzaWwtbXVzdGFuZy5jYXBpLmxhbmQvb2F1dGgvdG9rZW4iLCJ6aWQiOiJ1YWEiLCJhdWQiOlsiY2xvdWRfY29udHJvbGxlciIsInBhc3N3b3JkIiwiY2YiLCJ1YWEiLCJvcGVuaWQiXX0.nEcML5IifdW_CIonUM-ebY1RRspJlsr7fVq6pHPQLTnOhMmi2ZR2lDzvbQ99LTS-kd0E2juzuOLYQYryPutbyLm2LgwbtvCRD9IxNnwGYPwIVlodfHdCqocMQXEtvlSdNGfY1kwAGtv9NJowPDVpxJKE4H1Hxx0MRObFnJcH_W9F4yJAUf5ALjplFOzsmmnfsqTDfTGR2oo24133YYCGSyOaUBiOghJvUG7IQiFdVjR_7yxSObj00DO6VbWlEGTYLbChuN37Hm90Fu9cCllheSy0pElfdLKt6lojcSGG1pMnwpnK74n3n3qoBlK3poVsosj6g_xfkuLfQ_Y4yiq1IQ`
-
 type MVCC struct {
 	cmd    *exec.Cmd
 	client *http.Client
@@ -80,8 +78,14 @@ func (cc *MVCC) Kill() error {
 	return cc.cmd.Process.Kill()
 }
 
-func (cc *MVCC) Get(path string, respData interface{}) (*http.Response, error) {
+func (cc *MVCC) Get(path string, authToken string, respData interface{}) (*http.Response, error) {
+	headers := http.Header{}
+	if authToken != "" {
+		headers.Set("Authorization", authToken)
+	}
+
 	res, err := cc.client.Do(&http.Request{
+		Header: headers,
 		Method: "GET",
 		URL: &url.URL{
 			Scheme: "http",
@@ -107,18 +111,15 @@ func (cc *MVCC) Get(path string, respData interface{}) (*http.Response, error) {
 	return res, nil
 }
 
-func (cc *MVCC) Post(path string, body interface{}, respData interface{}) (*http.Response, error) {
-	bodyBits, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-
+func (cc *MVCC) Post(path string, authToken string, bodyBits []byte, respData interface{}) (*http.Response, error) {
 	headers := http.Header{}
 	headers.Set("Content-Type", "application/json")
-	headers.Set("Authorization", validToken)
+	if authToken != "" {
+		headers.Set("Authorization", authToken)
+	}
 
 	res, err := cc.client.Do(&http.Request{
-		Body:   ioutil.NopCloser(bytes.NewBuffer(bodyBits)),
+		Body:   ioutil.NopCloser(bytes.NewReader(bodyBits)),
 		Header: headers,
 		Method: "POST",
 		URL: &url.URL{
@@ -139,9 +140,11 @@ func (cc *MVCC) Post(path string, body interface{}, respData interface{}) (*http
 
 	fmt.Printf("%s\n", bits)
 
-	err = json.Unmarshal(bits, respData)
-	if err != nil {
-		return nil, err
+	if res.StatusCode == 200 {
+		err = json.Unmarshal(bits, respData)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return res, nil
