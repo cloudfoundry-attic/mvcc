@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -33,7 +34,13 @@ func main() {
 	]
 }`))
 		default:
-			fmt.Println("unexpected request:", req)
+			fmt.Printf("unhandled request: %#v", req)
+			data, err := ioutil.ReadAll(req.Body)
+			if err != nil {
+				fmt.Println(err.Error())
+				os.Exit(1)
+			}
+			fmt.Printf("body: %s", data)
 			w.Write([]byte("{}"))
 		}
 	}))

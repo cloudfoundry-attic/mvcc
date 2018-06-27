@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,6 +17,9 @@ const (
 	// By default, retry every 200ms for up to 1m
 	DefaultDialRetries  = 100
 	DefaultDialInterval = 200 * time.Millisecond
+
+	DefaultHost = "localhost"
+	DefaultPort = 8181
 )
 
 type MVCC struct {
@@ -26,8 +29,8 @@ type MVCC struct {
 	port   int
 }
 
-func Dial(dialOptions ...DialOption) (*MVCC, error) {
-	opts := &dialOpts{
+func DialMVCC(dialOptions ...DialMVCCOption) (*MVCC, error) {
+	opts := &dialMVCCOpts{
 		retries:  DefaultDialRetries,
 		interval: DefaultDialInterval,
 	}
@@ -50,6 +53,8 @@ func Dial(dialOptions ...DialOption) (*MVCC, error) {
 		filepath.Join(opts.ccPath, "bin/cloud_controller"),
 		"-c", opts.ccConfigPath,
 	)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
@@ -57,8 +62,8 @@ func Dial(dialOptions ...DialOption) (*MVCC, error) {
 	cc := &MVCC{
 		cmd:    cmd,
 		client: &http.Client{},
-		host:   "localhost",
-		port:   8181,
+		host:   DefaultHost,
+		port:   DefaultPort,
 	}
 
 	if err := poll(fmt.Sprintf("http://%s:%d/v2/info", cc.host, cc.port), opts.retries, opts.interval); err != nil {
@@ -79,55 +84,44 @@ func (cc *MVCC) Kill() error {
 }
 
 func (cc *MVCC) Get(path string, authToken string, respData interface{}) (*http.Response, error) {
-	headers := http.Header{}
-	if authToken != "" {
-		headers.Set("Authorization", authToken)
-	}
-
-	res, err := cc.client.Do(&http.Request{
-		Header: headers,
-		Method: "GET",
-		URL: &url.URL{
-			Scheme: "http",
-			Host:   fmt.Sprintf("%s:%d", cc.host, cc.port),
-			Path:   path,
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	bits, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	err = json.Unmarshal(bits, respData)
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
+	return cc.Do("GET", path, authToken, nil, respData)
 }
 
-func (cc *MVCC) Post(path string, authToken string, bodyBits []byte, respData interface{}) (*http.Response, error) {
-	headers := http.Header{}
-	headers.Set("Content-Type", "application/json")
-	if authToken != "" {
-		headers.Set("Authorization", authToken)
+func (cc *MVCC) Post(path string, authToken string, body interface{}, respData interface{}) (*http.Response, error) {
+	return cc.Do("POST", path, authToken, body, respData)
+}
+
+func (cc *MVCC) Put(path string, authToken string, body interface{}, respData interface{}) (*http.Response, error) {
+	return cc.Do("PUT", path, authToken, body, respData)
+}
+
+func (cc *MVCC) Delete(path string, authToken string) (*http.Response, error) {
+	return cc.Do("DELETE", path, authToken, nil, nil)
+}
+
+func (cc *MVCC) Do(verb string, path string, authToken string, body interface{}, respData interface{}) (*http.Response, error) {
+	var reqBody io.Reader
+	if body != nil {
+		bodyBits, err := json.Marshal(body)
+		if err != nil {
+			return nil, err
+		}
+		reqBody = bytes.NewBuffer(bodyBits)
 	}
 
-	res, err := cc.client.Do(&http.Request{
-		Body:   ioutil.NopCloser(bytes.NewReader(bodyBits)),
-		Header: headers,
-		Method: "POST",
-		URL: &url.URL{
-			Scheme: "http",
-			Host:   fmt.Sprintf("%s:%d", cc.host, cc.port),
-			Path:   path,
-		},
-	})
+	req, err := http.NewRequest(verb, fmt.Sprintf("http://%s:%d%s", cc.host, cc.port, path), reqBody)
+	if err != nil {
+		return nil, err
+	}
+
+	if verb == "POST" {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	if authToken != "" {
+		req.Header.Set("Authorization", authToken)
+	}
+
+	res, err := cc.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -138,9 +132,7 @@ func (cc *MVCC) Post(path string, authToken string, bodyBits []byte, respData in
 		return nil, err
 	}
 
-	fmt.Printf("%s\n", bits)
-
-	if res.StatusCode == 200 {
+	if respData != nil && res.StatusCode >= 200 && res.StatusCode < 300 {
 		err = json.Unmarshal(bits, respData)
 		if err != nil {
 			return nil, err
@@ -150,35 +142,35 @@ func (cc *MVCC) Post(path string, authToken string, bodyBits []byte, respData in
 	return res, nil
 }
 
-type dialOpts struct {
+type dialMVCCOpts struct {
 	retries      int
 	interval     time.Duration
 	ccPath       string
 	ccConfigPath string
 }
 
-type DialOption func(*dialOpts)
+type DialMVCCOption func(*dialMVCCOpts)
 
-func WithCloudControllerPath(path string) DialOption {
-	return func(o *dialOpts) {
+func WithCloudControllerPath(path string) DialMVCCOption {
+	return func(o *dialMVCCOpts) {
 		o.ccPath = path
 	}
 }
 
-func WithCloudControllerConfigPath(path string) DialOption {
-	return func(o *dialOpts) {
+func WithCloudControllerConfigPath(path string) DialMVCCOption {
+	return func(o *dialMVCCOpts) {
 		o.ccConfigPath = path
 	}
 }
 
-func WithDialRetries(retries int) DialOption {
-	return func(o *dialOpts) {
+func WithDialRetries(retries int) DialMVCCOption {
+	return func(o *dialMVCCOpts) {
 		o.retries = retries
 	}
 }
 
-func WithDialRetryInterval(interval time.Duration) DialOption {
-	return func(o *dialOpts) {
+func WithDialRetryInterval(interval time.Duration) DialMVCCOption {
+	return func(o *dialMVCCOpts) {
 		o.interval = interval
 	}
 }

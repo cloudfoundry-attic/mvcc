@@ -1,16 +1,21 @@
 package test_test
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
 	"os"
+	"path/filepath"
 	"time"
 
 	"code.cloudfoundry.org/mvcc"
+	"code.cloudfoundry.org/perm/pkg/perm"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"golang.org/x/oauth2"
@@ -25,8 +30,10 @@ const (
 )
 
 var (
-	cc          *mvcc.MVCC
-	oauthServer *httptest.Server
+	cc            *mvcc.MVCC
+	fakeUaaServer *httptest.Server
+	permServer    *mvcc.PermServer
+	permClient    *perm.Client
 )
 
 func TestTest(t *testing.T) {
@@ -39,21 +46,20 @@ var _ = BeforeSuite(func() {
 	ccConfigPath := os.Getenv("CLOUD_CONTROLLER_CONFIG_PATH")
 
 	var err error
-	cc, err = mvcc.Dial(
+	cc, err = mvcc.DialMVCC(
 		mvcc.WithCloudControllerPath(ccPath),
 		mvcc.WithCloudControllerConfigPath(ccConfigPath),
 	)
 	Expect(err).NotTo(HaveOccurred())
 
-	oauthServer = httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	fakeUaaServer = httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch req.URL.Path {
 		case "/.well-known/openid-configuration":
 			w.Write([]byte(fmt.Sprintf(`
 {
-  "issuer": "http://%s",
-  "jwks_uri": "http://%s/token_keys"
-}`, req.Host, req.Host)))
+  "issuer": "http://%s"
+}`, req.Host)))
 		default:
 			out, err := httputil.DumpRequest(req, true)
 			Expect(err).NotTo(HaveOccurred())
@@ -61,14 +67,38 @@ var _ = BeforeSuite(func() {
 		}
 	}))
 
-	err = oauthServer.Listener.Close()
+	err = fakeUaaServer.Listener.Close()
 	Expect(err).NotTo(HaveOccurred())
 
 	customListener, err := net.Listen("tcp", "localhost:6789")
 	Expect(err).NotTo(HaveOccurred())
 
-	oauthServer.Listener = customListener
-	oauthServer.Start()
+	fakeUaaServer.Listener = customListener
+	fakeUaaServer.Start()
+
+	permServerBinPath := os.Getenv("PERM_SERVER_BIN_PATH")
+	permServerCertsPath := os.Getenv("PERM_SERVER_CERTS_PATH")
+
+	permServer, err = mvcc.DialPermServer(
+		mvcc.WithPermBinaryPath(permServerBinPath),
+		mvcc.WithPermCertsPath(permServerCertsPath),
+	)
+	Expect(err).NotTo(HaveOccurred())
+
+	permCACert, err := ioutil.ReadFile(filepath.Join(permServerCertsPath, "perm-server.crt"))
+	Expect(err).NotTo(HaveOccurred())
+
+	rootCAPool := x509.NewCertPool()
+	ok := rootCAPool.AppendCertsFromPEM([]byte(permCACert))
+	Expect(ok).To(BeTrue())
+
+	permClient, err = perm.Dial(
+		"localhost:3333",
+		perm.WithTLSConfig(&tls.Config{
+			RootCAs: rootCAPool,
+		}),
+	)
+	Expect(err).NotTo(HaveOccurred())
 })
 
 var _ = AfterSuite(func() {
@@ -77,43 +107,89 @@ var _ = AfterSuite(func() {
 		Expect(err).NotTo(HaveOccurred())
 	}
 
-	oauthServer.Close()
+	fakeUaaServer.Close()
+
+	if permServer != nil {
+		err := permServer.Kill()
+		Expect(err).NotTo(HaveOccurred())
+	}
+
+	err := permClient.Close()
+	Expect(err).NotTo(HaveOccurred())
 })
 
-func createSignedToken() (*oauth2.Token, error) {
+var tokenRoles map[string]string = map[string]string{
+	"admin": `{
+		"jti": "9be1892c72a3472d8f80d11fc9825784",
+		"sub": "%s",
+		"scope": [
+			"openid",
+			"cloud_controller.admin",
+			"cloud_controller.read",
+			"cloud_controller.write"
+		],
+		"client_id": "cf",
+		"cid": "cf",
+		"azp": "cf",
+		"grant_type": "password",
+		"user_id": "%s",
+		"origin": "uaa",
+		"user_name": "admin",
+		"email": "admin",
+		"rev_sig": "666a6510",
+		"zid": "uaa",
+		"aud": [
+			"cloud_controller",
+			"password",
+			"cf",
+			"openid"
+		],
+		"iat": %d,
+		"exp": %d,
+		"iss": "%s"
+	}`,
+	"non-admin": `{
+		"jti": "9be1892c72a3472d8f80d11fc9825784",
+		"sub": "%s",
+		"scope": [
+			"openid",
+			"cloud_controller.read",
+			"cloud_controller.write"
+		],
+		"client_id": "cf",
+		"cid": "cf",
+		"azp": "cf",
+		"grant_type": "password",
+		"user_id": "%s",
+		"origin": "uaa",
+		"user_name": "non-admin",
+		"email": "non-admin",
+		"rev_sig": "666a6510",
+		"zid": "uaa",
+		"aud": [
+			"cloud_controller",
+			"password",
+			"cf",
+			"openid"
+		],
+		"iat": %d,
+		"exp": %d,
+		"iss": "%s"
+	}`,
+}
+
+func createSignedToken(userId string, isAdmin bool) (*oauth2.Token, error) {
 	issuedAt := time.Now().AddDate(-50, 0, 0).Unix() // 50 years ago
 	expireAt := time.Now().AddDate(50, 0, 0)
-	payload := fmt.Sprintf(`
-{
-  "jti": "9be1892c72a3472d8f80d11fc9825784",
-  "sub": "4d3e04b1-f89f-4370-ada7-70e8d1b7f3c1",
-  "scope": [
-    "cloud_controller.admin",
-    "password.write",
-    "openid",
-    "uaa.user"
-  ],
-  "client_id": "cf",
-  "cid": "cf",
-  "azp": "cf",
-  "grant_type": "password",
-  "user_id": "4d3e04b1-f89f-4370-ada7-70e8d1b7f3c1",
-  "origin": "uaa",
-  "user_name": "admin",
-  "email": "admin",
-  "rev_sig": "666a6510",
-  "zid": "uaa",
-  "aud": [
-    "cloud_controller",
-    "password",
-    "cf",
-    "uaa",
-    "openid"
-  ],
-	"iat": %d,
-	"exp": %d,
-	"iss": "%s"
-}`, issuedAt, expireAt.Unix(), validIssuer)
+
+	var template string
+	if isAdmin {
+		template = tokenRoles["admin"]
+	} else {
+		template = tokenRoles["non-admin"]
+	}
+
+	payload := fmt.Sprintf(template, userId, userId, issuedAt, expireAt.Unix(), validIssuer)
 
 	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.HS256, Key: []byte(signingKey)}, nil)
 	Expect(err).NotTo(HaveOccurred())
@@ -136,4 +212,8 @@ func createSignedToken() (*oauth2.Token, error) {
 		AccessToken: fmt.Sprintf("bearer %s.%s.%s", token.Protected, token.Payload, token.Signature),
 		Expiry:      expireAt,
 	}, nil
+}
+
+func randomName(prefix string) string {
+	return fmt.Sprintf("%s-%d", prefix, time.Now().Nanosecond())
 }
