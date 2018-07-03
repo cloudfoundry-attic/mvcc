@@ -34,6 +34,9 @@ var (
 	fakeUaaServer *httptest.Server
 	permServer    *mvcc.PermServer
 	permClient    *perm.Client
+
+	admin mvcc.User
+	user  mvcc.User
 )
 
 func TestTest(t *testing.T) {
@@ -99,6 +102,28 @@ var _ = BeforeSuite(func() {
 		}),
 	)
 	Expect(err).NotTo(HaveOccurred())
+
+	adminUUID, err := mvcc.RandomUUID("admin")
+	Expect(err).NotTo(HaveOccurred())
+
+	adminToken, err := createSignedToken(adminUUID, true)
+	Expect(err).NotTo(HaveOccurred())
+
+	admin = mvcc.User{
+		UUID:        adminUUID,
+		AccessToken: adminToken.AccessToken,
+	}
+
+	userUUID, err := mvcc.RandomUUID("user")
+	Expect(err).NotTo(HaveOccurred())
+
+	userToken, err := createSignedToken(userUUID, false)
+	Expect(err).NotTo(HaveOccurred())
+
+	user = mvcc.User{
+		UUID:        userUUID,
+		AccessToken: userToken.AccessToken,
+	}
 })
 
 var _ = AfterSuite(func() {

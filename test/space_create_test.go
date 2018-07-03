@@ -7,7 +7,6 @@ import (
 	"code.cloudfoundry.org/perm/pkg/perm"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"golang.org/x/oauth2"
 )
 
 var _ = Describe("#SpaceCreate", func() {
@@ -39,10 +38,7 @@ var _ = Describe("#SpaceCreate", func() {
 					} `json:"resources"`
 				}
 
-				token, err := createSignedToken("admin", true)
-				Expect(err).NotTo(HaveOccurred())
-
-				res, err := cc.Get("/v2/organizations", token.AccessToken, &listOrgsResp)
+				res, err := cc.Get("/v2/organizations", admin.AccessToken, &listOrgsResp)
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(res.StatusCode).To(Equal(200))
@@ -65,10 +61,7 @@ var _ = Describe("#SpaceCreate", func() {
 					} `json:"entity"`
 				}
 
-				token, err := createSignedToken("admin", true)
-				Expect(err).NotTo(HaveOccurred())
-
-				res, err := cc.Post("/v2/organizations", token.AccessToken, body, &createOrgResp)
+				res, err := cc.Post("/v2/organizations", admin.AccessToken, body, &createOrgResp)
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(res.StatusCode).To(Equal(201))
@@ -76,7 +69,7 @@ var _ = Describe("#SpaceCreate", func() {
 				orgGuid := createOrgResp.Metadata.GUID
 
 				orgURL := fmt.Sprintf("/v2/organizations/%s?recursive=true", orgGuid)
-				res, err = cc.Delete(orgURL, token.AccessToken)
+				res, err = cc.Delete(orgURL, admin.AccessToken)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res.StatusCode).To(Equal(204))
 			})
@@ -84,18 +77,11 @@ var _ = Describe("#SpaceCreate", func() {
 
 		Context("when the user is an OrgManager", func() {
 			var (
-				uaaUserGuid string
-				orgGuid     string
-				token       *oauth2.Token
-				err         error
+				orgGuid string
+				err     error
 			)
 
 			BeforeEach(func() {
-				uaaUserGuid = "hi-i-am-a-user"
-
-				token, err = createSignedToken("admin", true)
-				Expect(err).NotTo(HaveOccurred())
-
 				orgName := randomName("org")
 				orgCreateBody := struct {
 					Name string `json:"name"`
@@ -112,19 +98,19 @@ var _ = Describe("#SpaceCreate", func() {
 					} `json:"entity"`
 				}
 
-				_, err = cc.Post("/v2/organizations", token.AccessToken, orgCreateBody, &createOrgResp)
+				_, err = cc.Post("/v2/organizations", admin.AccessToken, orgCreateBody, &createOrgResp)
 				Expect(err).NotTo(HaveOccurred())
 
 				orgGuid = createOrgResp.Metadata.GUID
 
-				associateOrgManagerPath := fmt.Sprintf("/v2/organizations/%s/managers/%s", orgGuid, uaaUserGuid)
-				_, err = cc.Put(associateOrgManagerPath, token.AccessToken, struct{}{}, nil)
+				associateOrgManagerPath := fmt.Sprintf("/v2/organizations/%s/managers/%s", orgGuid, user.UUID)
+				_, err = cc.Put(associateOrgManagerPath, admin.AccessToken, struct{}{}, nil)
 				Expect(err).ToNot(HaveOccurred())
 			})
 
 			AfterEach(func() {
 				orgURL := fmt.Sprintf("/v2/organizations/%s?recursive=true", orgGuid)
-				res, err := cc.Delete(orgURL, token.AccessToken)
+				res, err := cc.Delete(orgURL, admin.AccessToken)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res.StatusCode).To(Equal(204))
 			})
@@ -148,10 +134,7 @@ var _ = Describe("#SpaceCreate", func() {
 					} `json:"entity"`
 				}
 
-				userToken, err := createSignedToken(uaaUserGuid, false)
-				Expect(err).NotTo(HaveOccurred())
-
-				res, err := cc.Post("/v2/spaces", userToken.AccessToken, body, &createSpaceResp)
+				res, err := cc.Post("/v2/spaces", user.AccessToken, body, &createSpaceResp)
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(res.StatusCode).To(Equal(201))
@@ -168,10 +151,8 @@ var _ = Describe("#SpaceCreate", func() {
 						} `json:"entity"`
 					}
 
-					token, err := createSignedToken("admin", true)
+					res, err := cc.Get(orgPath, admin.AccessToken, &orgResp)
 					Expect(err).NotTo(HaveOccurred())
-
-					res, err := cc.Get(orgPath, token.AccessToken, &orgResp)
 					Expect(res.StatusCode).To(Equal(200))
 					Expect(orgResp.Entity.Status).To(Equal("active"))
 
@@ -181,7 +162,7 @@ var _ = Describe("#SpaceCreate", func() {
 						Status: "suspended",
 					}
 
-					res, err = cc.Put(orgPath, token.AccessToken, body, &orgResp)
+					res, err = cc.Put(orgPath, admin.AccessToken, body, &orgResp)
 					Expect(err).ToNot(HaveOccurred())
 
 					Expect(res.StatusCode).To(Equal(201))
@@ -207,10 +188,7 @@ var _ = Describe("#SpaceCreate", func() {
 						} `json:"entity"`
 					}
 
-					userToken, err := createSignedToken(uaaUserGuid, false)
-					Expect(err).NotTo(HaveOccurred())
-
-					res, err := cc.Post("/v2/spaces", userToken.AccessToken, body, &createSpaceResp)
+					res, err := cc.Post("/v2/spaces", user.AccessToken, body, &createSpaceResp)
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(res.StatusCode).To(Equal(403))
@@ -220,24 +198,6 @@ var _ = Describe("#SpaceCreate", func() {
 	})
 
 	Describe("FGP space.create", func() {
-		var (
-			userGuid   string
-			userToken  *oauth2.Token
-			adminGuid  string
-			adminToken *oauth2.Token
-			err        error
-		)
-
-		BeforeEach(func() {
-			adminGuid = randomName("admin")
-			adminToken, err = createSignedToken(adminGuid, true)
-			Expect(err).NotTo(HaveOccurred())
-
-			userGuid = randomName("user")
-			userToken, err = createSignedToken(userGuid, false)
-			Expect(err).NotTo(HaveOccurred())
-		})
-
 		Context("when the user has the space.create permission in an org", func() {
 			var (
 				orgGuid  string
@@ -258,7 +218,7 @@ var _ = Describe("#SpaceCreate", func() {
 					} `json:"metadata"`
 				}
 
-				res, err := cc.Post("/v2/organizations", adminToken.AccessToken, body, &orgCreateResponse)
+				res, err := cc.Post("/v2/organizations", admin.AccessToken, body, &orgCreateResponse)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res.StatusCode).To(Equal(201))
 
@@ -273,7 +233,7 @@ var _ = Describe("#SpaceCreate", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				actor := perm.Actor{
-					ID:        userGuid,
+					ID:        user.UUID,
 					Namespace: validIssuer,
 				}
 
@@ -283,7 +243,7 @@ var _ = Describe("#SpaceCreate", func() {
 
 			AfterEach(func() {
 				orgURL := fmt.Sprintf("/v2/organizations/%s?recursive=true", orgGuid)
-				res, err := cc.Delete(orgURL, adminToken.AccessToken)
+				res, err := cc.Delete(orgURL, admin.AccessToken)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res.StatusCode).To(Equal(204))
 
@@ -298,7 +258,7 @@ var _ = Describe("#SpaceCreate", func() {
 					Name:    "my-space",
 					OrgGuid: orgGuid,
 				}
-				res, err := cc.Post("/v2/spaces", userToken.AccessToken, body, nil)
+				res, err := cc.Post("/v2/spaces", user.AccessToken, body, nil)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res.StatusCode).To(Equal(201))
 			})
@@ -321,7 +281,7 @@ var _ = Describe("#SpaceCreate", func() {
 					}
 
 					orgURL := fmt.Sprintf("/v2/organizations/%s", orgGuid)
-					res, err := cc.Put(orgURL, adminToken.AccessToken, body, &orgUpdateResponse)
+					res, err := cc.Put(orgURL, admin.AccessToken, body, &orgUpdateResponse)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(res.StatusCode).To(Equal(201))
 					Expect(orgUpdateResponse.Entity.Status).To(Equal("suspended"))
@@ -335,7 +295,7 @@ var _ = Describe("#SpaceCreate", func() {
 						Name:    "my-space",
 						OrgGuid: orgGuid,
 					}
-					res, err := cc.Post("/v2/spaces", userToken.AccessToken, body, nil)
+					res, err := cc.Post("/v2/spaces", user.AccessToken, body, nil)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(res.StatusCode).To(Equal(403))
 				})
@@ -360,7 +320,7 @@ var _ = Describe("#SpaceCreate", func() {
 					} `json:"metadata"`
 				}
 
-				res, err := cc.Post("/v2/organizations", adminToken.AccessToken, body, &orgCreateResponse)
+				res, err := cc.Post("/v2/organizations", admin.AccessToken, body, &orgCreateResponse)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res.StatusCode).To(Equal(201))
 
@@ -369,7 +329,7 @@ var _ = Describe("#SpaceCreate", func() {
 
 			AfterEach(func() {
 				orgURL := fmt.Sprintf("/v2/organizations/%s?recursive=true", orgGuid)
-				res, err := cc.Delete(orgURL, adminToken.AccessToken)
+				res, err := cc.Delete(orgURL, admin.AccessToken)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res.StatusCode).To(Equal(204))
 			})
@@ -382,7 +342,7 @@ var _ = Describe("#SpaceCreate", func() {
 					Name:    "my-space",
 					OrgGuid: orgGuid,
 				}
-				res, err := cc.Post("/v2/spaces", userToken.AccessToken, body, nil)
+				res, err := cc.Post("/v2/spaces", user.AccessToken, body, nil)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res.StatusCode).To(Equal(403))
 			})
@@ -405,7 +365,7 @@ var _ = Describe("#SpaceCreate", func() {
 					}
 
 					orgURL := fmt.Sprintf("/v2/organizations/%s", orgGuid)
-					res, err := cc.Put(orgURL, adminToken.AccessToken, body, &orgUpdateResponse)
+					res, err := cc.Put(orgURL, admin.AccessToken, body, &orgUpdateResponse)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(res.StatusCode).To(Equal(201))
 					Expect(orgUpdateResponse.Entity.Status).To(Equal("suspended"))
@@ -419,7 +379,7 @@ var _ = Describe("#SpaceCreate", func() {
 						Name:    "my-space",
 						OrgGuid: orgGuid,
 					}
-					res, err := cc.Post("/v2/spaces", userToken.AccessToken, body, nil)
+					res, err := cc.Post("/v2/spaces", user.AccessToken, body, nil)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(res.StatusCode).To(Equal(403))
 				})
