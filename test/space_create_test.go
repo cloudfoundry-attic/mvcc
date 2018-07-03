@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"code.cloudfoundry.org/mvcc"
 	"code.cloudfoundry.org/perm/pkg/perm"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -13,39 +14,21 @@ var _ = Describe("#SpaceCreate", func() {
 	Describe("baseline API behavior", func() {
 		Context("when the user is an OrgManager", func() {
 			var (
-				orgGuid string
-				err     error
+				org mvcc.Organization
 			)
 
 			BeforeEach(func() {
-				orgName := randomName("org")
-				orgCreateBody := struct {
-					Name string `json:"name"`
-				}{
-					Name: orgName,
-				}
-
-				var createOrgResp struct {
-					Metadata struct {
-						GUID string `json:"guid"`
-					} `json:"metadata"`
-					Entity struct {
-						Name string `json:"name"`
-					} `json:"entity"`
-				}
-
-				_, err = cc.Post("/v2/organizations", admin.AccessToken, orgCreateBody, &createOrgResp)
+				var err error
+				org, err = cc.CreateRandomOrganization(admin.AccessToken)
 				Expect(err).NotTo(HaveOccurred())
 
-				orgGuid = createOrgResp.Metadata.GUID
-
-				associateOrgManagerPath := fmt.Sprintf("/v2/organizations/%s/managers/%s", orgGuid, user.UUID)
+				associateOrgManagerPath := fmt.Sprintf("/v2/organizations/%s/managers/%s", org.UUID, user.UUID)
 				_, err = cc.Put(associateOrgManagerPath, admin.AccessToken, struct{}{}, nil)
 				Expect(err).ToNot(HaveOccurred())
 			})
 
 			AfterEach(func() {
-				orgURL := fmt.Sprintf("/v2/organizations/%s?recursive=true", orgGuid)
+				orgURL := fmt.Sprintf("/v2/organizations/%s?recursive=true", org.UUID)
 				res, err := cc.Delete(orgURL, admin.AccessToken)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res.StatusCode).To(Equal(204))
@@ -58,7 +41,7 @@ var _ = Describe("#SpaceCreate", func() {
 					OrganizationGUID string `json:"organization_guid"`
 				}{
 					Name:             spaceName,
-					OrganizationGUID: orgGuid,
+					OrganizationGUID: org.UUID,
 				}
 
 				var createSpaceResp struct {
@@ -79,7 +62,7 @@ var _ = Describe("#SpaceCreate", func() {
 
 			Context("when the organization is suspended", func() {
 				BeforeEach(func() {
-					orgPath := fmt.Sprintf("/v2/organizations/%s", orgGuid)
+					orgPath := fmt.Sprintf("/v2/organizations/%s", org.UUID)
 
 					var orgResp struct {
 						Entity struct {
@@ -112,7 +95,7 @@ var _ = Describe("#SpaceCreate", func() {
 						OrganizationGUID string `json:"organization_guid"`
 					}{
 						Name:             spaceName,
-						OrganizationGUID: orgGuid,
+						OrganizationGUID: org.UUID,
 					}
 
 					var createSpaceResp struct {
@@ -136,32 +119,18 @@ var _ = Describe("#SpaceCreate", func() {
 	Describe("FGP space.create", func() {
 		Context("when the user has the space.create permission in an org", func() {
 			var (
-				orgGuid  string
 				roleName string
+				org      mvcc.Organization
 			)
 
 			BeforeEach(func() {
-				orgName := randomName("org")
-				body := struct {
-					Name string `json:"name"`
-				}{
-					Name: orgName,
-				}
-
-				var orgCreateResponse struct {
-					Metadata struct {
-						GUID string `json:"guid"`
-					} `json:"metadata"`
-				}
-
-				res, err := cc.Post("/v2/organizations", admin.AccessToken, body, &orgCreateResponse)
+				var err error
+				org, err = cc.CreateRandomOrganization(admin.AccessToken)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(res.StatusCode).To(Equal(201))
 
-				orgGuid = orgCreateResponse.Metadata.GUID
 				permission := perm.Permission{
 					Action:          "space.create",
-					ResourcePattern: orgGuid,
+					ResourcePattern: org.UUID,
 				}
 
 				roleName = randomName("role")
@@ -178,7 +147,7 @@ var _ = Describe("#SpaceCreate", func() {
 			})
 
 			AfterEach(func() {
-				orgURL := fmt.Sprintf("/v2/organizations/%s?recursive=true", orgGuid)
+				orgURL := fmt.Sprintf("/v2/organizations/%s?recursive=true", org.UUID)
 				res, err := cc.Delete(orgURL, admin.AccessToken)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res.StatusCode).To(Equal(204))
@@ -192,7 +161,7 @@ var _ = Describe("#SpaceCreate", func() {
 					OrgGuid string `json:"organization_guid"`
 				}{
 					Name:    "my-space",
-					OrgGuid: orgGuid,
+					OrgGuid: org.UUID,
 				}
 				res, err := cc.Post("/v2/spaces", user.AccessToken, body, nil)
 				Expect(err).NotTo(HaveOccurred())
@@ -216,7 +185,7 @@ var _ = Describe("#SpaceCreate", func() {
 						} `json:"entity"`
 					}
 
-					orgURL := fmt.Sprintf("/v2/organizations/%s", orgGuid)
+					orgURL := fmt.Sprintf("/v2/organizations/%s", org.UUID)
 					res, err := cc.Put(orgURL, admin.AccessToken, body, &orgUpdateResponse)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(res.StatusCode).To(Equal(201))
@@ -229,7 +198,7 @@ var _ = Describe("#SpaceCreate", func() {
 						OrgGuid string `json:"organization_guid"`
 					}{
 						Name:    "my-space",
-						OrgGuid: orgGuid,
+						OrgGuid: org.UUID,
 					}
 					res, err := cc.Post("/v2/spaces", user.AccessToken, body, nil)
 					Expect(err).NotTo(HaveOccurred())
@@ -240,31 +209,17 @@ var _ = Describe("#SpaceCreate", func() {
 
 		Context("when the user is authorized and not an Org Manger, admin, or space.create-er", func() {
 			var (
-				orgGuid string
+				org mvcc.Organization
 			)
+
 			BeforeEach(func() {
-				orgName := randomName("org")
-				body := struct {
-					Name string `json:"name"`
-				}{
-					Name: orgName,
-				}
-
-				var orgCreateResponse struct {
-					Metadata struct {
-						GUID string `json:"guid"`
-					} `json:"metadata"`
-				}
-
-				res, err := cc.Post("/v2/organizations", admin.AccessToken, body, &orgCreateResponse)
+				var err error
+				org, err = cc.CreateRandomOrganization(admin.AccessToken)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(res.StatusCode).To(Equal(201))
-
-				orgGuid = orgCreateResponse.Metadata.GUID
 			})
 
 			AfterEach(func() {
-				orgURL := fmt.Sprintf("/v2/organizations/%s?recursive=true", orgGuid)
+				orgURL := fmt.Sprintf("/v2/organizations/%s?recursive=true", org.UUID)
 				res, err := cc.Delete(orgURL, admin.AccessToken)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res.StatusCode).To(Equal(204))
@@ -276,7 +231,7 @@ var _ = Describe("#SpaceCreate", func() {
 					OrgGuid string `json:"organization_guid"`
 				}{
 					Name:    "my-space",
-					OrgGuid: orgGuid,
+					OrgGuid: org.UUID,
 				}
 				res, err := cc.Post("/v2/spaces", user.AccessToken, body, nil)
 				Expect(err).NotTo(HaveOccurred())
@@ -300,7 +255,7 @@ var _ = Describe("#SpaceCreate", func() {
 						} `json:"entity"`
 					}
 
-					orgURL := fmt.Sprintf("/v2/organizations/%s", orgGuid)
+					orgURL := fmt.Sprintf("/v2/organizations/%s", org.UUID)
 					res, err := cc.Put(orgURL, admin.AccessToken, body, &orgUpdateResponse)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(res.StatusCode).To(Equal(201))
@@ -313,7 +268,7 @@ var _ = Describe("#SpaceCreate", func() {
 						OrgGuid string `json:"organization_guid"`
 					}{
 						Name:    "my-space",
-						OrgGuid: orgGuid,
+						OrgGuid: org.UUID,
 					}
 					res, err := cc.Post("/v2/spaces", user.AccessToken, body, nil)
 					Expect(err).NotTo(HaveOccurred())

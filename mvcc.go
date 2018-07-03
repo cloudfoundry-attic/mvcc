@@ -3,6 +3,7 @@ package mvcc
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -140,6 +141,28 @@ func (cc *MVCC) Do(verb string, path string, authToken string, body interface{},
 	}
 
 	return res, nil
+}
+
+func (cc *MVCC) CreateRandomOrganization(authToken string) (Organization, error) {
+	var body struct {
+		Name string `json:"name"`
+	}
+	var org Organization
+	u, err := RandomUUID("org")
+	if err != nil {
+		return org, err
+	}
+	body.Name = u
+
+	res, err := cc.Post("/v3/organizations", authToken, body, &org)
+
+	if err != nil {
+		return org, err
+	}
+	if res.StatusCode != 201 {
+		return org, errors.New("failed to create org")
+	}
+	return org, nil
 }
 
 type dialMVCCOpts struct {

@@ -11,6 +11,11 @@ type User struct {
 	AccessToken string
 }
 
+type Organization struct {
+	Name string `json:"name"`
+	UUID string `json:"guid"`
+}
+
 func RandomUUID(prefix string) (string, error) {
 	u, err := uuid.NewV4()
 	if err != nil {
