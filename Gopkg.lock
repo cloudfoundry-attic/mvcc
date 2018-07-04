@@ -2,13 +2,46 @@
 
 
 [[projects]]
+  name = "code.cloudfoundry.org/lager"
+  packages = ["."]
+  revision = "b60e04e119450552243196105bae0d42179ee0ca"
+  version = "v1.1.0"
+
+[[projects]]
   branch = "master"
   name = "code.cloudfoundry.org/perm"
   packages = [
+    "cmd/contextx",
+    "pkg/api",
+    "pkg/api/db",
+    "pkg/api/db/migrations",
+    "pkg/api/logging",
     "pkg/api/protos",
-    "pkg/perm"
+    "pkg/api/repos",
+    "pkg/api/rpc",
+    "pkg/perm",
+    "pkg/permauth",
+    "pkg/sqlx"
   ]
   revision = "aeb563be39cf819961671c8a7cc778124e061438"
+
+[[projects]]
+  branch = "v1"
+  name = "github.com/Masterminds/squirrel"
+  packages = ["."]
+  revision = "b127ed9be03443fe3c0877e391130e3dd3f3107a"
+
+[[projects]]
+  branch = "v2"
+  name = "github.com/coreos/go-oidc"
+  packages = ["."]
+  revision = "8ae1da518bd4d9d5a5909090a184af30f336436d"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/go-sql-driver/mysql"
+  packages = ["."]
+  revision = "749ddf1598b47e3cd909414bda735fe790ef3d30"
 
 [[projects]]
   name = "github.com/gogo/protobuf"
@@ -31,6 +64,27 @@
   ]
   revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
   version = "v1.1.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/grpc-ecosystem/go-grpc-middleware"
+  packages = [
+    ".",
+    "recovery"
+  ]
+  revision = "e9c5d9645c437ab1b204cff969a2c0fb16cd4276"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/lann/builder"
+  packages = ["."]
+  revision = "1b87b36280d04fe7882d1512bf038ea2967ad534"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/lann/ps"
+  packages = ["."]
+  revision = "62de8c46ede02a7675c4c79c84883eb164cb71e3"
 
 [[projects]]
   name = "github.com/onsi/ginkgo"
@@ -77,10 +131,25 @@
   version = "v1.4.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/pquerna/cachecontrol"
+  packages = [
+    ".",
+    "cacheobject"
+  ]
+  revision = "1555304b9b35fdd2b425bccf1a5613677705e7d0"
+
+[[projects]]
   name = "github.com/satori/go.uuid"
   packages = ["."]
   revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
   version = "v1.2.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/xoebus/ceflog"
+  packages = ["."]
+  revision = "9cb6ad8a040b1eed3dccccf637a6902cb36ed58f"
 
 [[projects]]
   branch = "master"
@@ -160,6 +229,7 @@
 [[projects]]
   name = "google.golang.org/appengine"
   packages = [
+    "cloudsql",
     "internal",
     "internal/base",
     "internal/datastore",
@@ -228,6 +298,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "bacb83e7a8248ad8ea92d685b60b8136b82d13b021ded1d055078b4f585d796d"
+  inputs-digest = "9654aa7aaf42a177dcf6104086aacf415ab9c7f56bb1ad5bf68b706677e48d71"
   solver-name = "gps-cdcl"
   solver-version = 1

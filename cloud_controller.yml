@@ -330,7 +330,7 @@ perm:
   enabled: true
   hostname: localhost
   port: 3333
-  ca_cert_path: "../code.cloudfoundry.org/mvcc/certs/perm-server.crt"
+  ca_cert_path: "../code.cloudfoundry.org/mvcc/certs/ca.crt"
   timeout_in_milliseconds: 100
 
 credhub_api:

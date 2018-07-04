@@ -11,10 +11,12 @@ import (
 	"net/http/httptest"
 	"net/http/httputil"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
 
 	"code.cloudfoundry.org/mvcc"
+	"code.cloudfoundry.org/perm/pkg/api"
 	"code.cloudfoundry.org/perm/pkg/perm"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -32,7 +34,8 @@ const (
 var (
 	cc            *mvcc.MVCC
 	fakeUaaServer *httptest.Server
-	permServer    *mvcc.PermServer
+	permListener  net.Listener
+	permServer    *api.Server
 	permClient    *perm.Client
 
 	admin mvcc.User
@@ -81,16 +84,30 @@ var _ = BeforeSuite(func() {
 	fakeUaaServer.Listener = customListener
 	fakeUaaServer.Start()
 
-	permServerBinPath := os.Getenv("PERM_SERVER_BIN_PATH")
-	permServerCertsPath := os.Getenv("PERM_SERVER_CERTS_PATH")
-
-	permServer, err = mvcc.DialPermServer(
-		mvcc.WithPermBinaryPath(permServerBinPath),
-		mvcc.WithPermCertsPath(permServerCertsPath),
-	)
+	testCertPath := path.Join(os.Getenv("PERM_SERVER_CERTS_PATH"), "cert.crt")
+	testCert, err := ioutil.ReadFile(testCertPath)
 	Expect(err).NotTo(HaveOccurred())
 
-	permCACert, err := ioutil.ReadFile(filepath.Join(permServerCertsPath, "perm-server.crt"))
+	testCertKeyPath := path.Join(os.Getenv("PERM_SERVER_CERTS_PATH"), "cert.key")
+	testCertKey, err := ioutil.ReadFile(testCertKeyPath)
+	Expect(err).NotTo(HaveOccurred())
+
+	permServerCert, err := tls.X509KeyPair(testCert, testCertKey)
+	Expect(err).NotTo(HaveOccurred())
+
+	permServer = api.NewServer(api.WithTLSConfig(&tls.Config{
+		Certificates: []tls.Certificate{permServerCert},
+	}))
+
+	permListener, err = net.Listen("tcp", "localhost:3333")
+	Expect(err).NotTo(HaveOccurred())
+
+	go func() {
+		err = permServer.Serve(permListener)
+		Expect(err).NotTo(HaveOccurred())
+	}()
+
+	permCACert, err := ioutil.ReadFile(filepath.Join(os.Getenv("PERM_SERVER_CERTS_PATH"), "ca.crt"))
 	Expect(err).NotTo(HaveOccurred())
 
 	rootCAPool := x509.NewCertPool()
@@ -98,7 +115,7 @@ var _ = BeforeSuite(func() {
 	Expect(ok).To(BeTrue())
 
 	permClient, err = perm.Dial(
-		"localhost:3333",
+		permListener.Addr().String(),
 		perm.WithTLSConfig(&tls.Config{
 			RootCAs: rootCAPool,
 		}),
@@ -139,10 +156,7 @@ var _ = AfterSuite(func() {
 
 	fakeUaaServer.Close()
 
-	if permServer != nil {
-		err := permServer.Kill()
-		Expect(err).NotTo(HaveOccurred())
-	}
+	permServer.GracefulStop()
 
 	err := permClient.Close()
 	Expect(err).NotTo(HaveOccurred())
