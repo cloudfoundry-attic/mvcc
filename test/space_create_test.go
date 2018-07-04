@@ -36,23 +36,12 @@ var _ = Describe("#SpaceCreate", func() {
 
 			It("can create a space", func() {
 				spaceName := randomName("space")
-				body := struct {
-					Name             string `json:"name"`
-					OrganizationGUID string `json:"organization_guid"`
-				}{
+				body := mvcc.V2SpaceRequest{
 					Name:             spaceName,
 					OrganizationGUID: org.UUID,
 				}
 
-				var createSpaceResp struct {
-					Metadata struct {
-						GUID string `json:"guid"`
-					} `json:"metadata"`
-					Entity struct {
-						Name string `json:"name"`
-					} `json:"entity"`
-				}
-
+				var createSpaceResp mvcc.V2SpaceResponse
 				res, err := cc.Post("/v2/spaces", user.AccessToken, body, &createSpaceResp)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -64,20 +53,14 @@ var _ = Describe("#SpaceCreate", func() {
 				BeforeEach(func() {
 					orgPath := fmt.Sprintf("/v2/organizations/%s", org.UUID)
 
-					var orgResp struct {
-						Entity struct {
-							Status string `json:"status"`
-						} `json:"entity"`
-					}
+					var orgResp mvcc.V2OrganizationResponse
 
 					res, err := cc.Get(orgPath, admin.AccessToken, &orgResp)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(res.StatusCode).To(Equal(200))
 					Expect(orgResp.Entity.Status).To(Equal("active"))
 
-					body := struct {
-						Status string `json:"status"`
-					}{
+					body := mvcc.V2OrganizationRequest{
 						Status: "suspended",
 					}
 
@@ -90,22 +73,12 @@ var _ = Describe("#SpaceCreate", func() {
 
 				It("they can NOT create a space", func() {
 					spaceName := randomName("space")
-					body := struct {
-						Name             string `json:"name"`
-						OrganizationGUID string `json:"organization_guid"`
-					}{
+					body := mvcc.V2SpaceRequest{
 						Name:             spaceName,
 						OrganizationGUID: org.UUID,
 					}
 
-					var createSpaceResp struct {
-						Metadata struct {
-							GUID string `json:"guid"`
-						} `json:"metadata"`
-						Entity struct {
-							Name string `json:"name"`
-						} `json:"entity"`
-					}
+					var createSpaceResp mvcc.V2SpaceResponse
 
 					res, err := cc.Post("/v2/spaces", user.AccessToken, body, &createSpaceResp)
 					Expect(err).NotTo(HaveOccurred())
@@ -151,12 +124,9 @@ var _ = Describe("#SpaceCreate", func() {
 			})
 
 			It("they can create a space", func() {
-				body := struct {
-					Name    string `json:"name"`
-					OrgGuid string `json:"organization_guid"`
-				}{
-					Name:    "my-space",
-					OrgGuid: org.UUID,
+				body := mvcc.V2SpaceRequest{
+					Name:             "my-space",
+					OrganizationGUID: org.UUID,
 				}
 				res, err := cc.Post("/v2/spaces", user.AccessToken, body, nil)
 				Expect(err).NotTo(HaveOccurred())
@@ -165,20 +135,11 @@ var _ = Describe("#SpaceCreate", func() {
 
 			Context("when the org is suspended", func() {
 				BeforeEach(func() {
-					body := struct {
-						Status string `json:"status"`
-					}{
+					body := mvcc.V2OrganizationRequest{
 						Status: "suspended",
 					}
 
-					var orgUpdateResponse struct {
-						Metadata struct {
-							GUID string `json:"guid"`
-						} `json:"metadata"`
-						Entity struct {
-							Status string `json:"status"`
-						} `json:"entity"`
-					}
+					var orgUpdateResponse mvcc.V2OrganizationResponse
 
 					orgURL := fmt.Sprintf("/v2/organizations/%s", org.UUID)
 					res, err := cc.Put(orgURL, admin.AccessToken, body, &orgUpdateResponse)
@@ -188,12 +149,9 @@ var _ = Describe("#SpaceCreate", func() {
 				})
 
 				It("they can NOT create a space", func() {
-					body := struct {
-						Name    string `json:"name"`
-						OrgGuid string `json:"organization_guid"`
-					}{
-						Name:    "my-space",
-						OrgGuid: org.UUID,
+					body := mvcc.V2SpaceRequest{
+						Name:             "my-space",
+						OrganizationGUID: org.UUID,
 					}
 					res, err := cc.Post("/v2/spaces", user.AccessToken, body, nil)
 					Expect(err).NotTo(HaveOccurred())
@@ -221,12 +179,9 @@ var _ = Describe("#SpaceCreate", func() {
 			})
 
 			It("they can NOT create a space", func() {
-				body := struct {
-					Name    string `json:"name"`
-					OrgGuid string `json:"organization_guid"`
-				}{
-					Name:    "my-space",
-					OrgGuid: org.UUID,
+				body := mvcc.V2SpaceRequest{
+					Name:             "my-space",
+					OrganizationGUID: org.UUID,
 				}
 				res, err := cc.Post("/v2/spaces", user.AccessToken, body, nil)
 				Expect(err).NotTo(HaveOccurred())
@@ -235,20 +190,11 @@ var _ = Describe("#SpaceCreate", func() {
 
 			Context("when the org is suspended", func() {
 				BeforeEach(func() {
-					body := struct {
-						Status string `json:"status"`
-					}{
+					body := mvcc.V2OrganizationRequest{
 						Status: "suspended",
 					}
 
-					var orgUpdateResponse struct {
-						Metadata struct {
-							GUID string `json:"guid"`
-						} `json:"metadata"`
-						Entity struct {
-							Status string `json:"status"`
-						} `json:"entity"`
-					}
+					var orgUpdateResponse mvcc.V2OrganizationResponse
 
 					orgURL := fmt.Sprintf("/v2/organizations/%s", org.UUID)
 					res, err := cc.Put(orgURL, admin.AccessToken, body, &orgUpdateResponse)
@@ -258,12 +204,9 @@ var _ = Describe("#SpaceCreate", func() {
 				})
 
 				It("they can NOT create a space", func() {
-					body := struct {
-						Name    string `json:"name"`
-						OrgGuid string `json:"organization_guid"`
-					}{
-						Name:    "my-space",
-						OrgGuid: org.UUID,
+					body := mvcc.V2SpaceRequest{
+						Name:             "my-space",
+						OrganizationGUID: org.UUID,
 					}
 					res, err := cc.Post("/v2/spaces", user.AccessToken, body, nil)
 					Expect(err).NotTo(HaveOccurred())
