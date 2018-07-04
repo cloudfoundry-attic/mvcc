@@ -137,11 +137,6 @@ var _ = Describe("#SpaceCreate", func() {
 				_, err = permClient.CreateRole(context.Background(), roleName, permission)
 				Expect(err).NotTo(HaveOccurred())
 
-				actor := perm.Actor{
-					ID:        user.UUID,
-					Namespace: validIssuer,
-				}
-
 				err = permClient.AssignRole(context.Background(), roleName, actor)
 				Expect(err).NotTo(HaveOccurred())
 			})

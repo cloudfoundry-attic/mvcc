@@ -37,6 +37,8 @@ var (
 
 	admin mvcc.User
 	user  mvcc.User
+
+	actor perm.Actor
 )
 
 func TestTest(t *testing.T) {
@@ -123,6 +125,11 @@ var _ = BeforeSuite(func() {
 	user = mvcc.User{
 		UUID:        userUUID,
 		AccessToken: userToken.AccessToken,
+	}
+
+	actor = perm.Actor{
+		ID:        user.UUID,
+		Namespace: validIssuer,
 	}
 })
 
