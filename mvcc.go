@@ -47,14 +47,6 @@ func DialMVCC(dialOptions ...DialMVCCOption) (*MVCC, error) {
 		dialOption(opts)
 	}
 
-	if opts.ccPath == "" {
-		return nil, ErrCCBinaryPathNotSet
-	}
-
-	if err = os.Chdir(opts.ccPath); err != nil {
-		return nil, err
-	}
-
 	permConfig := make(map[string]interface{})
 	permConfig["enabled"] = true
 	permConfig["hostname"] = "localhost"
@@ -75,24 +67,28 @@ func DialMVCC(dialOptions ...DialMVCCOption) (*MVCC, error) {
 		return nil, err
 	}
 
-	ccConfigPath, err := ioutil.TempFile("", "cloud_controller.yml")
+	ccConfigFile, err := ioutil.TempFile("", "cloud_controller.yml")
 	if err != nil {
 		return nil, err
 	}
 
-	defer os.Remove(ccConfigPath.Name())
+	defer os.Remove(ccConfigFile.Name())
 
-	if _, err = ccConfigPath.Write(ccConfigYAML); err != nil {
+	if _, err = ccConfigFile.Write(ccConfigYAML); err != nil {
 		return nil, err
 	}
 
-	cmd := exec.Command(
-		filepath.Join(opts.ccPath, "bin/cloud_controller"),
-		"-c", ccConfigPath.Name(),
-	)
+	ccBinaryPath, err := exec.LookPath("cloud_controller")
+	if err != nil {
+		return nil, ErrCCBinaryPathNotSet
+	}
+
+	cmd := exec.Command(ccBinaryPath, "-c", ccConfigFile.Name())
+	cmd.Dir = filepath.Join(ccBinaryPath, "../..")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	if err := cmd.Start(); err != nil {
+
+	if err = cmd.Start(); err != nil {
 		return nil, err
 	}
 
@@ -200,19 +196,12 @@ func (cc *MVCC) V3CreateOrganization(authToken string) (Organization, error) {
 type dialMVCCOpts struct {
 	retries    int
 	interval   time.Duration
-	ccPath     string
 	port       int
 	permPort   int
 	permCAPath string
 }
 
 type DialMVCCOption func(*dialMVCCOpts)
-
-func WithCloudControllerPath(path string) DialMVCCOption {
-	return func(o *dialMVCCOpts) {
-		o.ccPath = path
-	}
-}
 
 func WithDialRetries(retries int) DialMVCCOption {
 	return func(o *dialMVCCOpts) {

@@ -79,8 +79,6 @@ var _ = BeforeSuite(func() {
 	)
 	Expect(err).NotTo(HaveOccurred())
 
-	ccPath := os.Getenv("CLOUD_CONTROLLER_SRC_PATH")
-
 	_, p, err := net.SplitHostPort(permListener.Addr().String())
 	Expect(err).NotTo(HaveOccurred())
 
@@ -96,7 +94,6 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	cc, err = mvcc.DialMVCC(
-		mvcc.WithCloudControllerPath(ccPath),
 		mvcc.WithPermPort(int(permPort)),
 		mvcc.WithPermCAPath(permCAFile.Name()),
 	)
