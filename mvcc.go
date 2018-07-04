@@ -3,7 +3,6 @@ package mvcc
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -143,7 +142,7 @@ func (cc *MVCC) Do(verb string, path string, authToken string, body interface{},
 	return res, nil
 }
 
-func (cc *MVCC) CreateRandomOrganization(authToken string) (Organization, error) {
+func (cc *MVCC) V3CreateOrganization(authToken string) (Organization, error) {
 	var org Organization
 	u, err := RandomUUID("org")
 	if err != nil {
@@ -158,10 +157,10 @@ func (cc *MVCC) CreateRandomOrganization(authToken string) (Organization, error)
 	if err != nil {
 		return org, err
 	}
-	if res.StatusCode != 201 {
-		return org, errors.New("failed to create org")
+	if res.StatusCode == 201 {
+		return org, nil
 	}
-	return org, nil
+	return org, convertStatusCode(res.StatusCode)
 }
 
 type dialMVCCOpts struct {
@@ -208,4 +207,21 @@ func poll(addr string, retries int, interval time.Duration) error {
 	}
 
 	return ErrFailedToStart
+}
+
+func convertStatusCode(statusCode int) error {
+	switch statusCode {
+	case 400:
+		return ErrBadRequest
+	case 401:
+		return ErrUnauthenticated
+	case 403:
+		return ErrForbidden
+	case 404:
+		return ErrNotFound
+	default:
+		return &ErrUnexpectedStatusCode{
+			StatusCode: statusCode,
+		}
+	}
 }

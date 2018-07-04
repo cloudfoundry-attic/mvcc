@@ -19,7 +19,7 @@ var _ = Describe("#SpaceCreate", func() {
 
 			BeforeEach(func() {
 				var err error
-				org, err = cc.CreateRandomOrganization(admin.AccessToken)
+				org, err = cc.V3CreateOrganization(admin.AccessToken)
 				Expect(err).NotTo(HaveOccurred())
 
 				associateOrgManagerPath := fmt.Sprintf("/v2/organizations/%s/managers/%s", org.UUID, user.UUID)
@@ -98,7 +98,7 @@ var _ = Describe("#SpaceCreate", func() {
 
 			BeforeEach(func() {
 				var err error
-				org, err = cc.CreateRandomOrganization(admin.AccessToken)
+				org, err = cc.V3CreateOrganization(admin.AccessToken)
 				Expect(err).NotTo(HaveOccurred())
 
 				permission := perm.Permission{
@@ -167,7 +167,7 @@ var _ = Describe("#SpaceCreate", func() {
 
 			BeforeEach(func() {
 				var err error
-				org, err = cc.CreateRandomOrganization(admin.AccessToken)
+				org, err = cc.V3CreateOrganization(admin.AccessToken)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
