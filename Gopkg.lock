@@ -3,7 +3,11 @@
 
 [[projects]]
   name = "code.cloudfoundry.org/lager"
-  packages = ["."]
+  packages = [
+    ".",
+    "lagerctx",
+    "lagertest"
+  ]
   revision = "b60e04e119450552243196105bae0d42179ee0ca"
   version = "v1.1.0"
 
@@ -116,6 +120,7 @@
   packages = [
     ".",
     "format",
+    "gbytes",
     "internal/assertion",
     "internal/asyncassertion",
     "internal/oraclematcher",
@@ -304,6 +309,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b58e099c13de23114c93c798e778e8e06b0e6f4e7d79d75450ce00a12da30305"
+  inputs-digest = "cc5543b4a1a991737c8b53d3a3cf6f1f6f2e09e9374f53b89332cb42ff923bff"
   solver-name = "gps-cdcl"
   solver-version = 1

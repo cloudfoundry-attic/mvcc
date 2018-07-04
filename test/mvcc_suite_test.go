@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"time"
 
+	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/mvcc"
 	"code.cloudfoundry.org/mvcc/fixtures"
 	"code.cloudfoundry.org/perm/pkg/api"
@@ -55,7 +56,7 @@ var _ = BeforeSuite(func() {
 
 	permServer = api.NewServer(api.WithTLSConfig(&tls.Config{
 		Certificates: []tls.Certificate{permServerCert},
-	}))
+	}), api.WithLogger(lagertest.NewTestLogger("perm")))
 
 	permListener, err = net.Listen("tcp", "localhost:0")
 	Expect(err).NotTo(HaveOccurred())
