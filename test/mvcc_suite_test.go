@@ -11,11 +11,11 @@ import (
 	"net/http/httptest"
 	"net/http/httputil"
 	"os"
-	"path"
-	"path/filepath"
+	"strconv"
 	"time"
 
 	"code.cloudfoundry.org/mvcc"
+	"code.cloudfoundry.org/mvcc/fixtures"
 	"code.cloudfoundry.org/perm/pkg/api"
 	"code.cloudfoundry.org/perm/pkg/perm"
 	. "github.com/onsi/ginkgo"
@@ -50,13 +50,55 @@ func TestTest(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	ccPath := os.Getenv("CLOUD_CONTROLLER_SRC_PATH")
-	ccConfigPath := os.Getenv("CLOUD_CONTROLLER_CONFIG_PATH")
+	permServerCert, err := tls.X509KeyPair([]byte(fixtures.TLSCertificate), []byte(fixtures.TLSKey))
+	Expect(err).NotTo(HaveOccurred())
 
-	var err error
+	permServer = api.NewServer(api.WithTLSConfig(&tls.Config{
+		Certificates: []tls.Certificate{permServerCert},
+	}))
+
+	permListener, err = net.Listen("tcp", "localhost:0")
+	Expect(err).NotTo(HaveOccurred())
+
+	go func() {
+		err = permServer.Serve(permListener)
+		Expect(err).NotTo(HaveOccurred())
+	}()
+
+	permCA := []byte(fixtures.TLSCertificateAuthority)
+
+	rootCAPool := x509.NewCertPool()
+	ok := rootCAPool.AppendCertsFromPEM(permCA)
+	Expect(ok).To(BeTrue())
+
+	permClient, err = perm.Dial(
+		permListener.Addr().String(),
+		perm.WithTLSConfig(&tls.Config{
+			RootCAs: rootCAPool,
+		}),
+	)
+	Expect(err).NotTo(HaveOccurred())
+
+	ccPath := os.Getenv("CLOUD_CONTROLLER_SRC_PATH")
+
+	_, p, err := net.SplitHostPort(permListener.Addr().String())
+	Expect(err).NotTo(HaveOccurred())
+
+	permPort, err := strconv.ParseInt(p, 0, 0)
+	Expect(err).NotTo(HaveOccurred())
+
+	permCAFile, err := ioutil.TempFile("", "ca")
+	Expect(err).NotTo(HaveOccurred())
+
+	defer os.Remove(permCAFile.Name())
+
+	_, err = permCAFile.Write(permCA)
+	Expect(err).NotTo(HaveOccurred())
+
 	cc, err = mvcc.DialMVCC(
 		mvcc.WithCloudControllerPath(ccPath),
-		mvcc.WithCloudControllerConfigPath(ccConfigPath),
+		mvcc.WithPermPort(int(permPort)),
+		mvcc.WithPermCAPath(permCAFile.Name()),
 	)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -83,44 +125,6 @@ var _ = BeforeSuite(func() {
 
 	fakeUaaServer.Listener = customListener
 	fakeUaaServer.Start()
-
-	testCertPath := path.Join(os.Getenv("PERM_SERVER_CERTS_PATH"), "cert.crt")
-	testCert, err := ioutil.ReadFile(testCertPath)
-	Expect(err).NotTo(HaveOccurred())
-
-	testCertKeyPath := path.Join(os.Getenv("PERM_SERVER_CERTS_PATH"), "cert.key")
-	testCertKey, err := ioutil.ReadFile(testCertKeyPath)
-	Expect(err).NotTo(HaveOccurred())
-
-	permServerCert, err := tls.X509KeyPair(testCert, testCertKey)
-	Expect(err).NotTo(HaveOccurred())
-
-	permServer = api.NewServer(api.WithTLSConfig(&tls.Config{
-		Certificates: []tls.Certificate{permServerCert},
-	}))
-
-	permListener, err = net.Listen("tcp", "localhost:3333")
-	Expect(err).NotTo(HaveOccurred())
-
-	go func() {
-		err = permServer.Serve(permListener)
-		Expect(err).NotTo(HaveOccurred())
-	}()
-
-	permCACert, err := ioutil.ReadFile(filepath.Join(os.Getenv("PERM_SERVER_CERTS_PATH"), "ca.crt"))
-	Expect(err).NotTo(HaveOccurred())
-
-	rootCAPool := x509.NewCertPool()
-	ok := rootCAPool.AppendCertsFromPEM([]byte(permCACert))
-	Expect(ok).To(BeTrue())
-
-	permClient, err = perm.Dial(
-		permListener.Addr().String(),
-		perm.WithTLSConfig(&tls.Config{
-			RootCAs: rootCAPool,
-		}),
-	)
-	Expect(err).NotTo(HaveOccurred())
 
 	adminUUID := mvcc.RandomUUID("admin")
 

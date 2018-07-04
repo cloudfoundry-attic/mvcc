@@ -1,6 +1,7 @@
----
+package fixtures
+
+const CloudControllerBaseConfigYaml = `---
 local_route: 127.0.0.1
-external_port: 8181
 tls_port: 8182
 pid_filename: /tmp/cloud_controller.pid
 stacks_file: config/stacks.yml
@@ -326,13 +327,6 @@ pending_builds:
   expiration_in_seconds: 42
   frequency_in_seconds: 300
 
-perm:
-  enabled: true
-  hostname: localhost
-  port: 3333
-  ca_cert_path: "../code.cloudfoundry.org/mvcc/certs/ca.crt"
-  timeout_in_milliseconds: 100
-
 credhub_api:
   internal_url: https://credhub.capi.internal:8844
   external_url: https://credhub.capi.external:8844
@@ -359,3 +353,4 @@ db:
   read_timeout: 3600
   connection_validation_timeout: 3600
   database: postgres://postgres@localhost:5432/cc_test_integration_cc
+`

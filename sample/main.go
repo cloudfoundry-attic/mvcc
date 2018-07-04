@@ -10,9 +10,8 @@ import (
 )
 
 func main() {
-	cc, err := mvcc.Dial(
+	cc, err := mvcc.DialMVCC(
 		mvcc.WithCloudControllerPath(os.Getenv("CLOUD_CONTROLLER_SRC_PATH")),
-		mvcc.WithCloudControllerConfigPath(os.Getenv("CLOUD_CONTROLLER_CONFIG_PATH")),
 	)
 	if err != nil {
 		fmt.Println("err:", err.Error())

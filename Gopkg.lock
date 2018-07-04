@@ -131,6 +131,12 @@
   version = "v1.4.0"
 
 [[projects]]
+  name = "github.com/phayes/freeport"
+  packages = ["."]
+  revision = "b8543db493a5ed890c5499e935e2cad7504f3a04"
+  version = "1.0.2"
+
+[[projects]]
   branch = "master"
   name = "github.com/pquerna/cachecontrol"
   packages = [
@@ -298,6 +304,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "9654aa7aaf42a177dcf6104086aacf415ab9c7f56bb1ad5bf68b706677e48d71"
+  inputs-digest = "b58e099c13de23114c93c798e778e8e06b0e6f4e7d79d75450ce00a12da30305"
   solver-name = "gps-cdcl"
   solver-version = 1
