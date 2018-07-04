@@ -105,8 +105,7 @@ var _ = BeforeSuite(func() {
 	)
 	Expect(err).NotTo(HaveOccurred())
 
-	adminUUID, err := mvcc.RandomUUID("admin")
-	Expect(err).NotTo(HaveOccurred())
+	adminUUID := mvcc.RandomUUID("admin")
 
 	adminToken, err := createSignedToken(adminUUID, true)
 	Expect(err).NotTo(HaveOccurred())
@@ -116,8 +115,7 @@ var _ = BeforeSuite(func() {
 		AccessToken: adminToken.AccessToken,
 	}
 
-	userUUID, err := mvcc.RandomUUID("user")
-	Expect(err).NotTo(HaveOccurred())
+	userUUID := mvcc.RandomUUID("user")
 
 	userToken, err := createSignedToken(userUUID, false)
 	Expect(err).NotTo(HaveOccurred())

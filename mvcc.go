@@ -144,12 +144,9 @@ func (cc *MVCC) Do(verb string, path string, authToken string, body interface{},
 
 func (cc *MVCC) V3CreateOrganization(authToken string) (Organization, error) {
 	var org Organization
-	u, err := RandomUUID("org")
-	if err != nil {
-		return org, err
-	}
+
 	body := V3OrganizationRequest{
-		Name: u,
+		Name: RandomUUID("org"),
 	}
 
 	res, err := cc.Post("/v3/organizations", authToken, body, &org)
