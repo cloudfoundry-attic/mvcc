@@ -12,8 +12,8 @@ type User struct {
 }
 
 type Organization struct {
-	Name string `json:"name"`
-	UUID string `json:"guid"`
+	Name string
+	UUID string
 }
 
 func RandomUUID(prefix string) string {

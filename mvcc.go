@@ -177,19 +177,24 @@ func (cc *MVCC) Do(verb string, path string, authToken string, body interface{},
 
 func (cc *MVCC) V3CreateOrganization(authToken string) (Organization, error) {
 	var org Organization
+	var o v3OrganizationResponse
 
 	body := V3OrganizationRequest{
 		Name: RandomUUID("org"),
 	}
 
-	res, err := cc.Post("/v3/organizations", authToken, body, &org)
+	res, err := cc.Post("/v3/organizations", authToken, body, &o)
 
 	if err != nil {
 		return org, err
 	}
 	if res.StatusCode == 201 {
+		org.Name = o.Name
+		org.UUID = o.GUID
+
 		return org, nil
 	}
+
 	return org, convertStatusCode(res.StatusCode)
 }
 

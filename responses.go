@@ -17,3 +17,8 @@ type V2SpaceResponse struct {
 		Name string `json:"name"`
 	} `json:"entity"`
 }
+
+type v3OrganizationResponse struct {
+	Name string `json:"name"`
+	GUID string `json:"guid"`
+}
