@@ -100,30 +100,6 @@ var _ = BeforeSuite(func() {
 	)
 	Expect(err).NotTo(HaveOccurred())
 
-	fakeUaaServer = httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		switch req.URL.Path {
-		case "/.well-known/openid-configuration":
-			w.Write([]byte(fmt.Sprintf(`
-{
-  "issuer": "http://%s"
-}`, req.Host)))
-		default:
-			out, err := httputil.DumpRequest(req, true)
-			Expect(err).NotTo(HaveOccurred())
-			Fail(fmt.Sprintf("unexpected request: %s", out))
-		}
-	}))
-
-	err = fakeUaaServer.Listener.Close()
-	Expect(err).NotTo(HaveOccurred())
-
-	customListener, err := net.Listen("tcp", "localhost:6789")
-	Expect(err).NotTo(HaveOccurred())
-
-	fakeUaaServer.Listener = customListener
-	fakeUaaServer.Start()
-
 	adminUUID := mvcc.RandomUUID("admin")
 
 	adminToken, err := createSignedToken(adminUUID, true)
@@ -156,12 +132,40 @@ var _ = AfterSuite(func() {
 		Expect(err).NotTo(HaveOccurred())
 	}
 
-	fakeUaaServer.Close()
-
 	permServer.GracefulStop()
 
 	err := permClient.Close()
 	Expect(err).NotTo(HaveOccurred())
+})
+
+var _ = BeforeEach(func() {
+	fakeUaaServer = httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch req.URL.Path {
+		case "/.well-known/openid-configuration":
+			w.Write([]byte(fmt.Sprintf(`
+{
+  "issuer": "http://%s"
+}`, req.Host)))
+		default:
+			out, err := httputil.DumpRequest(req, true)
+			Expect(err).NotTo(HaveOccurred())
+			Fail(fmt.Sprintf("unexpected request: %s", out))
+		}
+	}))
+
+	err := fakeUaaServer.Listener.Close()
+	Expect(err).NotTo(HaveOccurred())
+
+	customListener, err := net.Listen("tcp", "localhost:6789")
+	Expect(err).NotTo(HaveOccurred())
+
+	fakeUaaServer.Listener = customListener
+	fakeUaaServer.Start()
+})
+
+var _ = AfterEach(func() {
+	fakeUaaServer.Close()
 })
 
 var tokenRoles map[string]string = map[string]string{
