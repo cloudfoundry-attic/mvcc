@@ -53,7 +53,7 @@ func TestTest(t *testing.T) {
 	RunSpecs(t, "MVCC Test Suite")
 }
 
-var _ = BeforeSuite(func() {
+var _ = BeforeEach(func() {
 	var err error
 
 	uaaPort, err = freeport.GetFreePort()
@@ -141,7 +141,7 @@ var _ = BeforeSuite(func() {
 	}
 })
 
-var _ = AfterSuite(func() {
+var _ = AfterEach(func() {
 	if cc != nil {
 		err := cc.Kill()
 		Expect(err).NotTo(HaveOccurred())
