@@ -21,7 +21,6 @@ import (
 	"code.cloudfoundry.org/perm/pkg/perm"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/phayes/freeport"
 	"golang.org/x/oauth2"
 	jose "gopkg.in/square/go-jose.v2"
 
@@ -33,11 +32,10 @@ const (
 )
 
 var (
-	uaaPort     int
 	validIssuer string
 
 	cc            *mvcc.MVCC
-	fakeUaaServer *httptest.Server
+	fakeUAAServer *httptest.Server
 	permListener  net.Listener
 	permServer    *api.Server
 	permClient    *perm.Client
@@ -54,9 +52,25 @@ func TestTest(t *testing.T) {
 }
 
 var _ = BeforeEach(func() {
-	var err error
+	fakeUAAServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch req.URL.Path {
+		case "/.well-known/openid-configuration":
+			w.Write([]byte(fmt.Sprintf(`
+{
+  "issuer": "http://%s"
+}`, req.Host)))
+		default:
+			out, err := httputil.DumpRequest(req, true)
+			Expect(err).NotTo(HaveOccurred())
+			Fail(fmt.Sprintf("unexpected request: %s", out))
+		}
+	}))
 
-	uaaPort, err = freeport.GetFreePort()
+	_, p, err := net.SplitHostPort(fakeUAAServer.Listener.Addr().String())
+	Expect(err).NotTo(HaveOccurred())
+
+	uaaPort, err := strconv.ParseInt(p, 0, 0)
 	Expect(err).NotTo(HaveOccurred())
 
 	validIssuer = fmt.Sprintf("http://localhost:%d", uaaPort)
@@ -90,7 +104,7 @@ var _ = BeforeEach(func() {
 	)
 	Expect(err).NotTo(HaveOccurred())
 
-	_, p, err := net.SplitHostPort(permListener.Addr().String())
+	_, p, err = net.SplitHostPort(permListener.Addr().String())
 	Expect(err).NotTo(HaveOccurred())
 
 	permPort, err := strconv.ParseInt(p, 0, 0)
@@ -110,7 +124,7 @@ var _ = BeforeEach(func() {
 			CACertPath: permCAFile.Name(),
 		}),
 		mvcc.WithUAAOptions(mvcc.UAAOptions{
-			Port: uaaPort,
+			Port: int(uaaPort),
 		}),
 	)
 	Expect(err).NotTo(HaveOccurred())
@@ -151,36 +165,8 @@ var _ = AfterEach(func() {
 
 	err := permClient.Close()
 	Expect(err).NotTo(HaveOccurred())
-})
 
-var _ = BeforeEach(func() {
-	fakeUaaServer = httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		switch req.URL.Path {
-		case "/.well-known/openid-configuration":
-			w.Write([]byte(fmt.Sprintf(`
-{
-  "issuer": "http://%s"
-}`, req.Host)))
-		default:
-			out, err := httputil.DumpRequest(req, true)
-			Expect(err).NotTo(HaveOccurred())
-			Fail(fmt.Sprintf("unexpected request: %s", out))
-		}
-	}))
-
-	err := fakeUaaServer.Listener.Close()
-	Expect(err).NotTo(HaveOccurred())
-
-	customListener, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", uaaPort))
-	Expect(err).NotTo(HaveOccurred())
-
-	fakeUaaServer.Listener = customListener
-	fakeUaaServer.Start()
-})
-
-var _ = AfterEach(func() {
-	fakeUaaServer.Close()
+	fakeUAAServer.Close()
 })
 
 var tokenRoles map[string]string = map[string]string{
