@@ -12,9 +12,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"code.cloudfoundry.org/mvcc/fixtures"
+	"code.cloudfoundry.org/mvcc/internal/config"
 	"github.com/phayes/freeport"
-	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -41,42 +40,19 @@ func DialMVCC(dialOptions ...DialMVCCOption) (*MVCC, error) {
 	opts := &dialMVCCOpts{
 		retries:  DefaultDialRetries,
 		interval: DefaultDialInterval,
-		port:     port,
+		configOptions: []config.Option{
+			config.WithPort(port),
+		},
 	}
 	for _, dialOption := range dialOptions {
 		dialOption(opts)
 	}
 
-	permConfig := make(map[string]interface{})
-	permConfig["enabled"] = true
-	permConfig["hostname"] = "localhost"
-	permConfig["timeout_in_milliseconds"] = 100
-	permConfig["port"] = opts.permPort
-	permConfig["ca_cert_path"] = opts.permCAPath
-
-	ccConfig := make(map[interface{}]interface{})
-	if err = yaml.Unmarshal([]byte(fixtures.CloudControllerBaseConfigYaml), &ccConfig); err != nil {
-		return nil, err
-	}
-
-	ccConfig["external_port"] = port
-	ccConfig["perm"] = permConfig
-
-	ccConfigYAML, err := yaml.Marshal(&ccConfig)
+	ccConfigFile, err := config.Write(opts.configOptions...)
 	if err != nil {
 		return nil, err
 	}
-
-	ccConfigFile, err := ioutil.TempFile("", "cloud_controller.yml")
-	if err != nil {
-		return nil, err
-	}
-
-	defer os.Remove(ccConfigFile.Name())
-
-	if _, err = ccConfigFile.Write(ccConfigYAML); err != nil {
-		return nil, err
-	}
+	defer ccConfigFile.Remove()
 
 	ccBinaryPath, err := exec.LookPath("cloud_controller")
 	if err != nil {
@@ -96,7 +72,7 @@ func DialMVCC(dialOptions ...DialMVCCOption) (*MVCC, error) {
 		cmd:    cmd,
 		client: &http.Client{},
 		host:   DefaultHost,
-		port:   opts.port,
+		port:   port,
 	}
 
 	if err := poll(fmt.Sprintf("http://%s:%d/v2/info", cc.host, cc.port), opts.retries, opts.interval); err != nil {
@@ -199,11 +175,10 @@ func (cc *MVCC) V3CreateOrganization(authToken string) (Organization, error) {
 }
 
 type dialMVCCOpts struct {
-	retries    int
-	interval   time.Duration
-	port       int
-	permPort   int
-	permCAPath string
+	retries  int
+	interval time.Duration
+
+	configOptions []config.Option
 }
 
 type DialMVCCOption func(*dialMVCCOpts)
@@ -220,22 +195,23 @@ func WithDialRetryInterval(interval time.Duration) DialMVCCOption {
 	}
 }
 
-func WithPort(port int) DialMVCCOption {
+func WithPerm(options PermOptions) DialMVCCOption {
 	return func(o *dialMVCCOpts) {
-		o.port = port
+		permOpts := []config.Option{
+			config.WithPermEnabled(true),
+			config.WithPermHostname("localhost"),
+			config.WithPermPort(options.Port),
+			config.WithPermCACertPath(options.CACertPath),
+			config.WithPermTimeoutInMilliseconds(100),
+		}
+
+		o.configOptions = append(o.configOptions, permOpts...)
 	}
 }
 
-func WithPermPort(port int) DialMVCCOption {
-	return func(o *dialMVCCOpts) {
-		o.permPort = port
-	}
-}
-
-func WithPermCAPath(caPath string) DialMVCCOption {
-	return func(o *dialMVCCOpts) {
-		o.permCAPath = caPath
-	}
+type PermOptions struct {
+	Port       int
+	CACertPath string
 }
 
 func poll(addr string, retries int, interval time.Duration) error {

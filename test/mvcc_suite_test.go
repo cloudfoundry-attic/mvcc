@@ -95,8 +95,10 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	cc, err = mvcc.DialMVCC(
-		mvcc.WithPermPort(int(permPort)),
-		mvcc.WithPermCAPath(permCAFile.Name()),
+		mvcc.WithPerm(mvcc.PermOptions{
+			Port:       int(permPort),
+			CACertPath: permCAFile.Name(),
+		}),
 	)
 	Expect(err).NotTo(HaveOccurred())
 
