@@ -9,40 +9,15 @@ stacks_file: config/stacks.yml
 external_protocol: http
 external_domain: api2.vcap.me
 temporary_disable_deployments: true
-deployment_updater:
-  update_frequency_in_seconds: 30
 internal_service_hostname: api.internal.cf
 
-system_domain_organization: the-system_domain-org-name
 system_domain: vcap.me
-app_domains:
-  - customer-app-domain1.com
-  - name: customer-app-domain2.com
-system_hostnames:
-  - api
-  - uaa
-  - login
-  - doppler
-  - loggregator
+app_domains: []
+system_hostnames: []
 
 jobs:
   global:
     timeout_in_seconds: 14400
-
-app_usage_events:
-  cutoff_age_in_days: 31
-
-service_usage_events:
-  cutoff_age_in_days: 31
-
-audit_events:
-  cutoff_age_in_days: 31
-
-failed_jobs:
-  cutoff_age_in_days: 31
-
-completed_tasks:
-  cutoff_age_in_days: 31
 
 default_app_memory: 1024 #mb
 default_app_disk_in_mb: 1024
@@ -60,13 +35,11 @@ info:
   support_address: "http://support.cloudfoundry.com"
   description: "Cloud Foundry sponsored by Pivotal"
   app_ssh_endpoint: "ssh.system.domain.example.com:2222"
-  app_ssh_host_key_fingerprint: "47:0d:d1:c8:c3:3d:0a:36:d1:49:2f:f2:90:27:31:d0"
   app_ssh_oauth_client: "ssh-proxy"
 
 instance_file_descriptor_limit: 16384
 login:
   url: 'login-url.example.com'
-  enabled: true
 
 nginx:
   use_nginx: false
@@ -92,11 +65,6 @@ uaa:
   ca_file: "spec/fixtures/certs/uaa_ca.crt"
   client_timeout: 60
 
-routing_api:
-  url: "http://localhost:3000"
-  routing_client_name: 'routing-client'
-  routing_client_secret: 'routing-secret'
-
 route_services_enabled: true
 volume_services_enabled: true
 
@@ -110,54 +78,17 @@ internal_api:
 
 # App staging parameters
 staging:
-  # Max duration for staging process
   timeout_in_seconds: 120 # secs
   minimum_staging_memory_mb: 1024
   minimum_staging_disk_mb: 4096
+  minimum_staging_file_descriptor_limit: 4200
   auth:
     user: zxsfhgjg
     password: ZNVfdase9
 
-quota_definitions:
-  default:
-    memory_limit: 10240
-    total_services: 100
-    non_basic_services_allowed: true
-    total_routes: 1000
+quota_definitions: {}
 
 default_quota_definition: default
-
-resource_pool:
-  resource_directory_key: "spec-cc-resources"
-  fog_connection:
-    blobstore_timeout: 5
-    provider: "AWS"
-    aws_access_key_id: "fake_aws_key_id"
-    aws_secret_access_key: "fake_secret_access_key"
-
-packages:
-  app_package_directory_key: "cc-packages"
-  fog_connection:
-    blobstore_timeout: 5
-    provider: "AWS"
-    aws_access_key_id: "fake_aws_key_id"
-    aws_secret_access_key: "fake_secret_access_key"
-
-droplets:
-  droplet_directory_key: cc-droplets
-  fog_connection:
-    blobstore_timeout: 5
-    provider: "AWS"
-    aws_access_key_id: "fake_aws_key_id"
-    aws_secret_access_key: "fake_secret_access_key"
-
-buildpacks:
-  buildpack_directory_key: cc-buildpacks
-  fog_connection:
-    blobstore_timeout: 5
-    provider: "AWS"
-    aws_access_key_id: "fake_aws_key_id"
-    aws_secret_access_key: "fake_secret_access_key"
 
 db_encryption_key: "asdfasdfasdf"
 
@@ -165,13 +96,7 @@ default_health_check_timeout: 60
 maximum_health_check_timeout: 180
 
 disable_custom_buildpacks: false
-copilot:
-  enabled: false
 broker_client_timeout_seconds: 60
-
-uaa_client_name: 'cc-service-dashboards'
-uaa_client_secret: 'some-sekret'
-uaa_client_scope: openid,cloud_controller_service_permissions.read
 
 cloud_controller_username_lookup_client_name: 'username_lookup_client_name'
 cloud_controller_username_lookup_client_secret: 'username_lookup_secret'
@@ -182,36 +107,19 @@ cc_service_key_client_secret: 'cc-service-key-client-super-s3cre7'
 allow_app_ssh_access: true
 default_app_ssh_access: true
 
-
 renderer:
   max_results_per_page: 100
   default_results_per_page: 50
   max_inline_relations_depth: 3
 
-install_buildpacks:
-  - name: java_buildpack
-    package: buildpack_java
-  - name: ruby_buildpack
-    package: buildpack_ruby
-  - name: node_buildpack
-    package: buildpack_node
+install_buildpacks: []
 
-security_group_definitions:
-- name: dummy1
-  rules: []
-- name: dummy2
-  rules: []
+security_group_definitions: []
 
-default_staging_security_groups:
-- dummy3
-default_running_security_groups:
-- dummy4
+default_staging_security_groups: []
+default_running_security_groups: []
 
-allowed_cors_domains:
-- http://*.appspot.com
-- http://*.inblue.net
-- http://talkoncorners.com
-- http://borrowedheaven.org
+allowed_cors_domains: []
 
 rate_limiter:
   enabled: false
@@ -224,11 +132,7 @@ diego:
   cc_uploader_url: http://cc-uploader.service.cf.internal:9090
   use_privileged_containers_for_running: false
   use_privileged_containers_for_staging: false
-  lifecycle_bundles:
-    "buildpack/cflinuxfs2": "buildpack_app_lifecycle/buildpack_app_lifecycle.tgz"
-    "buildpack/windows2012R2": "windows_app_lifecycle/windows_app_lifecycle.tgz"
-    "buildpack/windows2016": "buildpack_app_lifecycle/buildpack_app_lifecycle.tgz"
-    "docker": "docker_app_lifecycle/docker_app_lifecycle.tgz"
+  lifecycle_bundles: {}
   insecure_docker_registry_list: []
   docker_staging_stack: 'cflinuxfs2'
   bbs:
@@ -236,36 +140,41 @@ diego:
     key_file: /var/vcap/jobs/cloud_controller_ng/config/certs/bbs_client.key
     cert_file: /var/vcap/jobs/cloud_controller_ng/config/certs/bbs_client.crt
     ca_file: /var/vcap/jobs/cloud_controller_ng/config/certs/bbs_ca.crt
+
   pid_limit: 2048
 
 directories:
   tmpdir: /tmp
   diagnostics: /tmp
 
-stacks_file: config/stacks.yml
 newrelic_enabled: false
-
-staging:
-  minimum_staging_file_descriptor_limit: 4200
 
 index: 0
 name: api
 resource_pool:
+  fog_aws_storage_options: {}
+  fog_connection: {}
   maximum_size: 42
   minimum_size: 1
-  fog_aws_storage_options: {}
+  resource_directory_key: ''
 
 buildpacks:
+  buildpack_directory_key: cc-buildpacks
   fog_aws_storage_options: {}
+  fog_connection: {}
 
 packages:
+  app_package_directory_key: "cc-packages"
+  fog_aws_storage_options: {}
+  fog_connection: {}
   max_package_size: 42
   max_valid_packages_stored: 42
-  fog_aws_storage_options: {}
 
 droplets:
+  droplet_directory_key: cc-droplets
   max_staged_droplets_stored: 42
   fog_aws_storage_options: {}
+  fog_connection: {}
 
 request_timeout_in_seconds: 600
 skip_cert_verify: true
@@ -274,83 +183,20 @@ security_event_logging:
   enabled: false
   file: /tmp/cef.log
 
-staging:
-  timeout_in_seconds: 42
-  expiration_in_secons: 42
-  minimum_staging_memory_mb: 42
-  minimum_staging_disk_mb: 42
-  minimum_staging_file_descriptor_limit: 42
-  auth:
-    user: 'bob'
-    password: 'laura'
-
-resource_pool:
-  resource_directory_key: ''
-  maximum_size: 42
-  minimum_size: 1
-  fog_connection: {}
-  fog_aws_storage_options: {}
-
-buildpacks:
-  buildpack_directory_key: ''
-  fog_connection: {}
-  fog_aws_storage_options: {}
-
-packages:
-  app_package_directory_key: ''
-  max_package_size: 42
-  max_valid_packages_stored: 42
-  fog_connection: {}
-  fog_aws_storage_options: {}
-
-droplets:
-  droplet_directory_key: ''
-  max_staged_droplets_stored: 42
-  fog_connection: {}
-  fog_aws_storage_options: {}
-
 bits_service:
   enabled: false
 
 statsd_host: "127.0.0.1"
 statsd_port: 8125
 
-perform_blob_cleanup: false
-
-diego_sync:
-  frequency_in_seconds: 30
-pending_droplets:
-  frequency_in_seconds: 300
-  expiration_in_seconds: 42
-
-pending_builds:
-  expiration_in_seconds: 42
-  frequency_in_seconds: 300
-
-credhub_api:
-  internal_url: https://credhub.capi.internal:8844
-  external_url: https://credhub.capi.external:8844
-  ca_cert_path: "spec/fixtures/certs/credhub_ca.crt"
-
 credential_references:
   interpolate_service_bindings: true
 
-copilot:
-  enabled: false
-  host: copilot.service.cf.internal
-  port: 9080
-  client_ca_file: 'spec/fixtures/certs/copilot_ca.crt'
-  client_key_file: 'spec/fixtures/certs/copilot.key'
-  client_chain_file: 'spec/fixtures/certs/copilot.crt'
-  sync_frequency_in_seconds: 30
-
 db:
   log_level: 'debug'
-  ssl_verify_hostname: false
   max_connections: 42
   pool_timeout: 60
   log_db_queries: true
-  read_timeout: 3600
   connection_validation_timeout: 3600
   database: postgres://postgres@localhost:5432/cc_test_integration_cc
 `
