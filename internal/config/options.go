@@ -38,6 +38,18 @@ func WithPermTimeoutInMilliseconds(timeout int) Option {
 	}
 }
 
+func WithUAAURL(url string) Option {
+	return func(c *config) {
+		c.UAA.URL = url
+	}
+}
+
+func WithUAAInternalURL(internalURL string) Option {
+	return func(c *config) {
+		c.UAA.InternalURL = internalURL
+	}
+}
+
 type config struct {
 	ExternalPort                int           `yaml:"external_port"`
 	LocalRoute                  string        `yaml:"local_route"`

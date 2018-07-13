@@ -195,7 +195,7 @@ func WithDialRetryInterval(interval time.Duration) DialMVCCOption {
 	}
 }
 
-func WithPerm(options PermOptions) DialMVCCOption {
+func WithPermOptions(options PermOptions) DialMVCCOption {
 	return func(o *dialMVCCOpts) {
 		permOpts := []config.Option{
 			config.WithPermEnabled(true),
@@ -209,9 +209,25 @@ func WithPerm(options PermOptions) DialMVCCOption {
 	}
 }
 
+func WithUAAOptions(options UAAOptions) DialMVCCOption {
+	return func(o *dialMVCCOpts) {
+		uaaURL := fmt.Sprintf("http://localhost:%d", options.Port)
+		uaaOpts := []config.Option{
+			config.WithUAAURL(uaaURL),
+			config.WithUAAInternalURL(uaaURL),
+		}
+
+		o.configOptions = append(o.configOptions, uaaOpts...)
+	}
+}
+
 type PermOptions struct {
 	Port       int
 	CACertPath string
+}
+
+type UAAOptions struct {
+	Port int
 }
 
 func poll(addr string, retries int, interval time.Duration) error {

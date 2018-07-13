@@ -21,6 +21,7 @@ import (
 	"code.cloudfoundry.org/perm/pkg/perm"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/phayes/freeport"
 	"golang.org/x/oauth2"
 	jose "gopkg.in/square/go-jose.v2"
 
@@ -28,11 +29,13 @@ import (
 )
 
 const (
-	signingKey  = "tokensecret"
-	validIssuer = "http://localhost:6789"
+	signingKey = "tokensecret"
 )
 
 var (
+	uaaPort     int
+	validIssuer string
+
 	cc            *mvcc.MVCC
 	fakeUaaServer *httptest.Server
 	permListener  net.Listener
@@ -51,6 +54,13 @@ func TestTest(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
+	var err error
+
+	uaaPort, err = freeport.GetFreePort()
+	Expect(err).NotTo(HaveOccurred())
+
+	validIssuer = fmt.Sprintf("http://localhost:%d", uaaPort)
+
 	permServerCert, err := tls.X509KeyPair([]byte(fixtures.TLSCertificate), []byte(fixtures.TLSKey))
 	Expect(err).NotTo(HaveOccurred())
 
@@ -95,9 +105,12 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	cc, err = mvcc.DialMVCC(
-		mvcc.WithPerm(mvcc.PermOptions{
+		mvcc.WithPermOptions(mvcc.PermOptions{
 			Port:       int(permPort),
 			CACertPath: permCAFile.Name(),
+		}),
+		mvcc.WithUAAOptions(mvcc.UAAOptions{
+			Port: uaaPort,
 		}),
 	)
 	Expect(err).NotTo(HaveOccurred())
@@ -159,7 +172,7 @@ var _ = BeforeEach(func() {
 	err := fakeUaaServer.Listener.Close()
 	Expect(err).NotTo(HaveOccurred())
 
-	customListener, err := net.Listen("tcp", "localhost:6789")
+	customListener, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", uaaPort))
 	Expect(err).NotTo(HaveOccurred())
 
 	fakeUaaServer.Listener = customListener
