@@ -89,7 +89,7 @@ var _ = Describe("#SpaceCreate", func() {
 		})
 	})
 
-	Describe("FGP space.create", func() {
+	XDescribe("FGP space.create", func() {
 		Context("when the user has the space.create permission in an org", func() {
 			var (
 				roleName string
