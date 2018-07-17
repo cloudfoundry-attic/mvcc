@@ -155,7 +155,7 @@ func (cc *MVCC) V3CreateOrganization(authToken string) (Organization, error) {
 	var org Organization
 	var o v3OrganizationResponse
 
-	body := V3OrganizationRequest{
+	body := v3OrganizationRequest{
 		Name: RandomUUID("org"),
 	}
 
