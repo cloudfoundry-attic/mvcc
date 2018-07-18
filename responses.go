@@ -22,3 +22,19 @@ type v3OrganizationResponse struct {
 	Name string `json:"name"`
 	GUID string `json:"guid"`
 }
+
+type v3SpaceResponse struct {
+	Name string `json:"name"`
+	GUID string `json:"guid"`
+}
+
+type v3AppResponse struct {
+	Name string `json:"name"`
+	GUID string `json:"guid"`
+}
+
+type v3TaskResponse struct {
+	Name        string `json:"name"`
+	GUID        string `json:"guid"`
+	DropletGUID string `json:"droplet_guid"`
+}

@@ -16,6 +16,20 @@ type Organization struct {
 	UUID string
 }
 
+type Space struct {
+	Name string
+	UUID string
+}
+
+type App struct {
+	Name string
+	UUID string
+}
+
+type Task struct {
+	UUID string
+}
+
 func RandomUUID(prefix string) string {
 	return fmt.Sprintf("%s-%s", prefix, uuid.NewV4().String())
 }

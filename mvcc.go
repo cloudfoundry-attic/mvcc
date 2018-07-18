@@ -174,6 +174,89 @@ func (cc *MVCC) V3CreateOrganization(authToken string) (Organization, error) {
 	return org, convertStatusCode(res.StatusCode)
 }
 
+func (cc *MVCC) V3CreateSpace(authToken string, parentOrg Organization) (Space, error) {
+	var space Space
+	var s v3SpaceResponse
+
+	var body v3SpaceRequest
+	body.Name = RandomUUID("space")
+	body.Relationships.Organization.Data.GUID = parentOrg.UUID
+
+	res, err := cc.Post("/v3/spaces", authToken, body, &s)
+	if err != nil {
+		return space, err
+	}
+	if res.StatusCode != 201 {
+		return space, convertStatusCode(res.StatusCode)
+	}
+
+	space.Name = s.Name
+	space.UUID = s.GUID
+
+	return space, nil
+}
+
+func (cc *MVCC) V3CreateApp(authToken string, parentSpace Space) (App, error) {
+	var app App
+	var a v3AppResponse
+
+	var body v3AppRequest
+	body.Name = RandomUUID("app")
+	body.Relationships.Space.Data.GUID = parentSpace.UUID
+
+	res, err := cc.Post("/v3/apps", authToken, body, &a)
+	if err != nil {
+		return app, err
+	}
+	if res.StatusCode != 201 {
+		return app, convertStatusCode(res.StatusCode)
+	}
+
+	app.Name = a.Name
+	app.UUID = a.GUID
+
+	return app, nil
+}
+
+func (cc *MVCC) V3CreateTask(authToken string, parentApp App) (Task, error) {
+	var task Task
+	var t v3TaskResponse
+
+	var body v3TaskRequest
+	body.Command = "echo hello"
+
+	path := fmt.Sprintf("/v3/apps/%s/tasks", parentApp.UUID)
+	res, err := cc.Post(path, authToken, body, &t)
+	if err != nil {
+		return task, err
+	}
+	if res.StatusCode != 202 {
+		return task, convertStatusCode(res.StatusCode)
+	}
+
+	task.UUID = t.GUID
+
+	return task, nil
+}
+
+func (cc *MVCC) V3GetTask(authToken string, taskUUID string) (Task, error) {
+	var task Task
+	var t v3TaskResponse
+
+	path := fmt.Sprintf("/v3/tasks/%s", taskUUID)
+	res, err := cc.Get(path, authToken, &t)
+	if err != nil {
+		return task, err
+	}
+	if res.StatusCode != 200 {
+		return task, convertStatusCode(res.StatusCode)
+	}
+
+	task.UUID = t.GUID
+
+	return task, nil
+}
+
 type dialMVCCOpts struct {
 	retries  int
 	interval time.Duration
