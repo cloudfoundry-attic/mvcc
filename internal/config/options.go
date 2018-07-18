@@ -295,5 +295,9 @@ func defaultConfig() *config {
 	c.ExternalDomain = "capi.example.com"
 	c.ExternalProtocol = "http"
 
+	c.MaximumAppDiskInMB = 2
+	c.DefaultAppDiskInMB = 1
+	c.DefaultAppMemory = 1
+
 	return c
 }
