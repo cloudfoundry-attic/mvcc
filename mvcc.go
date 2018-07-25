@@ -220,6 +220,7 @@ func (cc *MVCC) V3CreateApp(authToken string, parentSpace Space) (App, error) {
 	var body v3AppRequest
 	body.Name = RandomUUID("app")
 	body.Relationships.Space.Data.GUID = parentSpace.UUID
+	body.Lifecycle.Type = "docker"
 
 	res, err := cc.Post("/v3/apps", authToken, body, &a)
 	if err != nil {
@@ -377,6 +378,8 @@ func (cc *MVCC) V3GetTask(authToken string, taskUUID string) (Task, error) {
 }
 
 type dialMVCCOpts struct {
+	port int
+
 	retries  int
 	interval time.Duration
 
@@ -384,6 +387,12 @@ type dialMVCCOpts struct {
 }
 
 type DialMVCCOption func(*dialMVCCOpts)
+
+func WithPort(port int) DialMVCCOption {
+	return func(o *dialMVCCOpts) {
+		o.configOptions = append(o.configOptions, config.WithPort(port))
+	}
+}
 
 func WithDialRetries(retries int) DialMVCCOption {
 	return func(o *dialMVCCOpts) {

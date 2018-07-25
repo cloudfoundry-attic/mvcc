@@ -2,6 +2,27 @@
 
 
 [[projects]]
+  branch = "master"
+  name = "code.cloudfoundry.org/bbs"
+  packages = [
+    ".",
+    "encryption",
+    "events",
+    "format",
+    "models"
+  ]
+  revision = "d5cc1b2cd7e8096adcacbdd3eeb7976a77584955"
+
+[[projects]]
+  branch = "master"
+  name = "code.cloudfoundry.org/cfhttp"
+  packages = [
+    ".",
+    "unix_transport"
+  ]
+  revision = "08baa6b247caf03100a743f6c3c426d28e55336a"
+
+[[projects]]
   name = "code.cloudfoundry.org/lager"
   packages = [
     ".",
@@ -36,6 +57,12 @@
   revision = "b127ed9be03443fe3c0877e391130e3dd3f3107a"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/bmizerany/pat"
+  packages = ["."]
+  revision = "6226ea591a40176dd3ff9cd8eff81ed6ca721a00"
+
+[[projects]]
   branch = "v2"
   name = "github.com/coreos/go-oidc"
   packages = ["."]
@@ -52,7 +79,8 @@
   packages = [
     "gogoproto",
     "proto",
-    "protoc-gen-gogo/descriptor"
+    "protoc-gen-gogo/descriptor",
+    "sortkeys"
   ]
   revision = "1adfc126b41513cc696b209667c8656ea7aac67c"
   version = "v1.0.0"
@@ -155,6 +183,18 @@
   packages = ["."]
   revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
   version = "v1.2.0"
+
+[[projects]]
+  name = "github.com/tedsuo/rata"
+  packages = ["."]
+  revision = "0649c23705dfb45a9693b668c4fc1c0666f485d9"
+  version = "v1.0.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/vito/go-sse"
+  packages = ["sse"]
+  revision = "fd69d275caac5d78d793e77ddbe9bd2001d9b88d"
 
 [[projects]]
   branch = "master"
@@ -309,6 +349,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "cc5543b4a1a991737c8b53d3a3cf6f1f6f2e09e9374f53b89332cb42ff923bff"
+  inputs-digest = "fcb287a3e058576e57b89642a68adaf965176a373fb589402f8ef251d317aad0"
   solver-name = "gps-cdcl"
   solver-version = 1

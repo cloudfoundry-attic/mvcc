@@ -25,7 +25,11 @@ type v3SpaceRequest struct {
 }
 
 type v3AppRequest struct {
-	Name          string `json:"name"`
+	Name      string `json:"name"`
+	Lifecycle struct {
+		Type string   `json:"type"`
+		Data struct{} `json:"data"`
+	} `json:"lifecycle"`
 	Relationships struct {
 		Space struct {
 			Data struct {

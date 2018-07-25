@@ -5,6 +5,7 @@ type Option func(*config)
 func WithPort(port int) Option {
 	return func(c *config) {
 		c.ExternalPort = port
+		c.TLSPort = port
 	}
 }
 
@@ -162,15 +163,14 @@ type config struct {
 		ResetIntervalInMinutes int  `yaml:"reset_interval_in_minutes"`
 	} `yaml:"rate_limiter"`
 	Diego struct {
-		FileServerURL                     string `yaml:"file_server_url"`
-		CcUploaderURL                     string `yaml:"cc_uploader_url"`
-		UsePrivilegedContainersForRunning bool   `yaml:"use_privileged_containers_for_running"`
-		UsePrivilegedContainersForStaging bool   `yaml:"use_privileged_containers_for_staging"`
-		LifecycleBundles                  struct {
-		} `yaml:"lifecycle_bundles"`
-		InsecureDockerRegistryList []interface{} `yaml:"insecure_docker_registry_list"`
-		DockerStagingStack         string        `yaml:"docker_staging_stack"`
-		BBS                        struct {
+		FileServerURL                     string            `yaml:"file_server_url"`
+		CcUploaderURL                     string            `yaml:"cc_uploader_url"`
+		UsePrivilegedContainersForRunning bool              `yaml:"use_privileged_containers_for_running"`
+		UsePrivilegedContainersForStaging bool              `yaml:"use_privileged_containers_for_staging"`
+		LifecycleBundles                  map[string]string `yaml:"lifecycle_bundles"`
+		InsecureDockerRegistryList        []interface{}     `yaml:"insecure_docker_registry_list"`
+		DockerStagingStack                string            `yaml:"docker_staging_stack"`
+		BBS                               struct {
 			URL      string `yaml:"url"`
 			KeyFile  string `yaml:"key_file"`
 			CertFile string `yaml:"cert_file"`
@@ -298,6 +298,21 @@ func defaultConfig() *config {
 	c.MaximumAppDiskInMB = 2
 	c.DefaultAppDiskInMB = 1
 	c.DefaultAppMemory = 1
+
+	c.Diego.DockerStagingStack = "cflinuxfs2"
+
+	c.Diego.LifecycleBundles = make(map[string]string)
+	c.Diego.LifecycleBundles["docker"] = "docker_app_lifecycle/docker_app_lifecycle.tgz"
+	c.Diego.LifecycleBundles["buildpack/cflinuxfs2"] = "buildpack_app_lifecycle/buildpack_app_lifecycle.tgz"
+
+	c.Diego.BBS.URL = "http://localhost:8889"
+
+	c.InternalServiceHostname = "localhost"
+	c.InternalAPI.AuthUser = "user"
+	c.InternalAPI.AuthPassword = "password"
+
+	c.Droplets.MaxStagedDropletsStored = 100000
+	c.Packages.MaxValidPackagesStored = 100000
 
 	return c
 }

@@ -126,6 +126,7 @@ var _ = BeforeEach(func() {
 		mvcc.WithUAAOptions(mvcc.UAAOptions{
 			Port: int(uaaPort),
 		}),
+		// mvcc.WithPort(8888),
 	)
 	Expect(err).NotTo(HaveOccurred())
 
