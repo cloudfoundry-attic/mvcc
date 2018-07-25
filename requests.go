@@ -35,6 +35,31 @@ type v3AppRequest struct {
 	} `json:"relationships"`
 }
 
+type v3PackageRequest struct {
+	Type          PackageType `json:"type"`
+	Relationships struct {
+		App struct {
+			Data struct {
+				GUID string `json:"guid"`
+			} `json:"data"`
+		} `json:"app"`
+	} `json:"relationships"`
+	Data struct {
+		Image string `json:"image"`
+	} `json:"data"`
+}
+
+type v3BuildRequest struct {
+	Package struct {
+		GUID string `json:"guid"`
+	} `json:"package"`
+}
+
 type v3TaskRequest struct {
-	Command string `json:"command"`
+	Command     string `json:"command"`
+	DropletGUID string `json:"droplet_guid"`
+}
+
+type v2FeatureFlagRequest struct {
+	Enabled bool `json:"enabled"`
 }

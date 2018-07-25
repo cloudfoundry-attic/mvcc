@@ -1,5 +1,15 @@
 package mvcc
 
+type V3Error struct {
+	Code   int    `json:"code"`
+	Title  string `json:"title"`
+	Detail string `json:"detail"`
+}
+
+type V3ErrorResponse struct {
+	Errors []V3Error `json:"errors"`
+}
+
 type V2OrganizationResponse struct {
 	Metadata struct {
 		GUID string `json:"guid"`
@@ -31,6 +41,20 @@ type v3SpaceResponse struct {
 type v3AppResponse struct {
 	Name string `json:"name"`
 	GUID string `json:"guid"`
+}
+
+type v3PackageResponse struct {
+	GUID  string      `json:"guid"`
+	Type  PackageType `json:"type"`
+	State string      `json:"state"`
+}
+
+type v3BuildResponse struct {
+	GUID    string `json:"guid"`
+	State   string `json:"state"`
+	Droplet struct {
+		GUID string `json:"guid"`
+	} `json:"droplet"`
 }
 
 type v3TaskResponse struct {

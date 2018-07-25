@@ -153,6 +153,9 @@ var _ = BeforeEach(func() {
 		ID:        user.UUID,
 		Namespace: validIssuer,
 	}
+
+	err = cc.V2SetFeatureFlag(admin.AccessToken, "diego_docker", true)
+	Expect(err).NotTo(HaveOccurred())
 })
 
 var _ = AfterEach(func() {
