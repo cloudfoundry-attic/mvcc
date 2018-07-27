@@ -2,6 +2,8 @@ package test_test
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"code.cloudfoundry.org/mvcc"
 	"code.cloudfoundry.org/perm/pkg/perm"
@@ -28,7 +30,42 @@ var _ = Describe("Tasks", func() {
 			app, err := cc.V3CreateApp(admin.AccessToken, space)
 			Expect(err).NotTo(HaveOccurred())
 
-			task, err = cc.V3CreateTask(admin.AccessToken, app)
+			pkg, err := cc.V3CreatePackage(admin.AccessToken, app)
+			Expect(err).NotTo(HaveOccurred())
+
+			build, err := cc.V3CreateBuild(admin.AccessToken, pkg)
+			Expect(err).NotTo(HaveOccurred())
+			// Expect(build.DropletUUID).NotTo(Equal(""))
+
+			if err != nil {
+				pkg, err = cc.V3GetPackage(admin.AccessToken, pkg.UUID)
+				Expect(err).NotTo(HaveOccurred())
+				fmt.Println("pkg:", pkg, pkg.State)
+			}
+			Expect(err).NotTo(HaveOccurred())
+
+			fmt.Println("successful build:", build)
+			var dropletUUID string
+
+			timer := time.NewTimer(time.Second * 5)
+			ticker := time.NewTicker(time.Millisecond * 100)
+
+			for _ = range ticker.C {
+				build, err = cc.V3GetBuild(admin.AccessToken, build.UUID)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(build.State).NotTo(Equal("FAILED"))
+
+				if build.State == "STAGED" {
+					dropletUUID = build.DropletUUID
+					break
+				} else if build.State == "FAILED" {
+					fmt.Println("not staged", build.State, build)
+				}
+
+				Consistently(timer.C).ShouldNot(Receive())
+			}
+
+			task, err = cc.V3CreateTask(admin.AccessToken, app, dropletUUID)
 			Expect(err).NotTo(HaveOccurred())
 		})
 

@@ -151,6 +151,23 @@ func (cc *MVCC) Do(verb string, path string, authToken string, body interface{},
 	return res, nil
 }
 
+func (cc *MVCC) V2SetFeatureFlag(authToken string, flag string, enabled bool) error {
+	body := v2FeatureFlagRequest{
+		Enabled: enabled,
+	}
+
+	path := fmt.Sprintf("/v2/config/feature_flags/%s", flag)
+
+	res, err := cc.Put(path, authToken, body, nil)
+	if err != nil {
+		return err
+	} else if res.StatusCode != 200 {
+		return convertStatusCode(200)
+	}
+
+	return nil
+}
+
 func (cc *MVCC) V3CreateOrganization(authToken string) (Organization, error) {
 	var org Organization
 	var o v3OrganizationResponse
@@ -203,6 +220,7 @@ func (cc *MVCC) V3CreateApp(authToken string, parentSpace Space) (App, error) {
 	var body v3AppRequest
 	body.Name = RandomUUID("app")
 	body.Relationships.Space.Data.GUID = parentSpace.UUID
+	body.Lifecycle.Type = "docker"
 
 	res, err := cc.Post("/v3/apps", authToken, body, &a)
 	if err != nil {
@@ -218,12 +236,114 @@ func (cc *MVCC) V3CreateApp(authToken string, parentSpace Space) (App, error) {
 	return app, nil
 }
 
-func (cc *MVCC) V3CreateTask(authToken string, parentApp App) (Task, error) {
+func (cc *MVCC) V3GetPackage(authToken string, uuid string) (Package, error) {
+	var pkg Package
+	var p v3PackageResponse
+
+	path := fmt.Sprintf("/v3/packages/%s", uuid)
+
+	res, err := cc.Get(path, authToken, &p)
+	if err != nil {
+		return pkg, err
+	}
+	if res.StatusCode != 200 {
+		return pkg, convertStatusCode(res.StatusCode)
+	}
+
+	pkg.UUID = p.GUID
+	pkg.Type = p.Type
+	pkg.State = p.State
+
+	return pkg, nil
+}
+
+func (cc *MVCC) V3CreatePackage(authToken string, parentApp App) (Package, error) {
+	var pkg Package
+	var p v3PackageResponse
+
+	var body v3PackageRequest
+	body.Relationships.App.Data.GUID = parentApp.UUID
+	body.Data.Image = "alpine"
+	body.Type = "docker"
+
+	res, err := cc.Post("/v3/packages", authToken, body, &p)
+	if err != nil {
+		return pkg, err
+	}
+	if res.StatusCode != 201 {
+		return pkg, convertStatusCode(res.StatusCode)
+	}
+
+	pkg.UUID = p.GUID
+	pkg.Type = p.Type
+	pkg.State = p.State
+
+	return pkg, nil
+}
+
+func (cc *MVCC) V3GetBuild(authToken string, uuid string) (Build, error) {
+	var b v3BuildResponse
+	var build Build
+
+	path := fmt.Sprintf("/v3/builds/%s", uuid)
+	res, err := cc.Get(path, authToken, &b)
+	if err != nil {
+		return build, err
+	}
+	if res.StatusCode != 200 {
+		return build, convertStatusCode(res.StatusCode)
+	}
+
+	build.UUID = b.GUID
+	build.State = b.State
+	build.DropletUUID = b.Droplet.GUID
+
+	return build, nil
+}
+
+func (cc *MVCC) V3CreateBuild(authToken string, parentPackage Package) (Build, error) {
+	var build Build
+	var b v3BuildResponse
+
+	var body v3BuildRequest
+	body.Package.GUID = parentPackage.UUID
+
+	res, err := cc.Post("/v3/builds", authToken, body, &b)
+	if err != nil {
+		return build, err
+	}
+	if res.StatusCode != 201 {
+		var e V3ErrorResponse
+
+		defer res.Body.Close()
+		bits, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return build, err
+		}
+
+		if err = json.Unmarshal(bits, &e); err != nil {
+			return build, err
+		}
+
+		fmt.Println("ERR:", e)
+
+		return build, convertStatusCode(res.StatusCode)
+	}
+
+	build.UUID = b.GUID
+	build.State = b.State
+	build.DropletUUID = b.Droplet.GUID
+
+	return build, nil
+}
+
+func (cc *MVCC) V3CreateTask(authToken string, parentApp App, dropletUUID string) (Task, error) {
 	var task Task
 	var t v3TaskResponse
 
 	var body v3TaskRequest
 	body.Command = "echo hello"
+	body.DropletGUID = dropletUUID
 
 	path := fmt.Sprintf("/v3/apps/%s/tasks", parentApp.UUID)
 	res, err := cc.Post(path, authToken, body, &t)
@@ -258,6 +378,8 @@ func (cc *MVCC) V3GetTask(authToken string, taskUUID string) (Task, error) {
 }
 
 type dialMVCCOpts struct {
+	port int
+
 	retries  int
 	interval time.Duration
 
@@ -265,6 +387,12 @@ type dialMVCCOpts struct {
 }
 
 type DialMVCCOption func(*dialMVCCOpts)
+
+func WithPort(port int) DialMVCCOption {
+	return func(o *dialMVCCOpts) {
+		o.configOptions = append(o.configOptions, config.WithPort(port))
+	}
+}
 
 func WithDialRetries(retries int) DialMVCCOption {
 	return func(o *dialMVCCOpts) {
@@ -304,12 +432,27 @@ func WithUAAOptions(options UAAOptions) DialMVCCOption {
 	}
 }
 
+func WithBBSOptions(options BBSOptions) DialMVCCOption {
+	return func(o *dialMVCCOpts) {
+		bbsURL := fmt.Sprintf("http://localhost:%d", options.Port)
+		bbsOpts := []config.Option{
+			config.WithBBSURL(bbsURL),
+		}
+
+		o.configOptions = append(o.configOptions, bbsOpts...)
+	}
+}
+
 type PermOptions struct {
 	Port       int
 	CACertPath string
 }
 
 type UAAOptions struct {
+	Port int
+}
+
+type BBSOptions struct {
 	Port int
 }
 

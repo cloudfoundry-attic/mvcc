@@ -56,3 +56,11 @@
 [[constraint]]
   name = "github.com/phayes/freeport"
   version = "1.0.2"
+
+[[constraint]]
+  branch = "master"
+  name = "code.cloudfoundry.org/bbs"
+
+[[constraint]]
+  name = "code.cloudfoundry.org/lager"
+  version = "1.1.0"
