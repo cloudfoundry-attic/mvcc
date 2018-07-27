@@ -60,3 +60,7 @@
 [[constraint]]
   branch = "master"
   name = "code.cloudfoundry.org/bbs"
+
+[[constraint]]
+  name = "code.cloudfoundry.org/lager"
+  version = "1.1.0"

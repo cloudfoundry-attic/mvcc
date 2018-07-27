@@ -10,7 +10,7 @@ import (
 
 const (
 	// Portable true/false literals.
-	sqlTrue = "(1=1)"
+	sqlTrue  = "(1=1)"
 	sqlFalse = "(1=0)"
 )
 
@@ -83,7 +83,7 @@ func (eq Eq) toSql(useNotOpr bool) (sql string, args []interface{}, err error) {
 		sql = sqlTrue
 		return
 	}
-	
+
 	var (
 		exprs       []string
 		equalOpr    = "="

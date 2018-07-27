@@ -432,12 +432,27 @@ func WithUAAOptions(options UAAOptions) DialMVCCOption {
 	}
 }
 
+func WithBBSOptions(options BBSOptions) DialMVCCOption {
+	return func(o *dialMVCCOpts) {
+		bbsURL := fmt.Sprintf("http://localhost:%d", options.Port)
+		bbsOpts := []config.Option{
+			config.WithBBSURL(bbsURL),
+		}
+
+		o.configOptions = append(o.configOptions, bbsOpts...)
+	}
+}
+
 type PermOptions struct {
 	Port       int
 	CACertPath string
 }
 
 type UAAOptions struct {
+	Port int
+}
+
+type BBSOptions struct {
 	Port int
 }
 

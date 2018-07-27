@@ -16,6 +16,7 @@ import (
 
 	"code.cloudfoundry.org/lager/lagertest"
 	"code.cloudfoundry.org/mvcc"
+	"code.cloudfoundry.org/mvcc/diegox"
 	"code.cloudfoundry.org/mvcc/fixtures"
 	"code.cloudfoundry.org/perm/pkg/api"
 	"code.cloudfoundry.org/perm/pkg/perm"
@@ -118,6 +119,22 @@ var _ = BeforeEach(func() {
 	_, err = permCAFile.Write(permCA)
 	Expect(err).NotTo(HaveOccurred())
 
+	bbsListener, err := net.Listen("tcp", "localhost:0")
+	Expect(err).NotTo(HaveOccurred())
+
+	bbsServer := diegox.NewBBSServer()
+
+	go func() {
+		err = bbsServer.Serve(bbsListener)
+		Expect(err).NotTo(HaveOccurred())
+	}()
+
+	_, rawBBSPort, err := net.SplitHostPort(bbsListener.Addr().String())
+	Expect(err).NotTo(HaveOccurred())
+
+	bbsPort, err := strconv.ParseInt(rawBBSPort, 0, 0)
+	Expect(err).NotTo(HaveOccurred())
+
 	cc, err = mvcc.DialMVCC(
 		mvcc.WithPermOptions(mvcc.PermOptions{
 			Port:       int(permPort),
@@ -126,7 +143,9 @@ var _ = BeforeEach(func() {
 		mvcc.WithUAAOptions(mvcc.UAAOptions{
 			Port: int(uaaPort),
 		}),
-		// mvcc.WithPort(8888),
+		mvcc.WithBBSOptions(mvcc.BBSOptions{
+			Port: int(bbsPort),
+		}),
 	)
 	Expect(err).NotTo(HaveOccurred())
 

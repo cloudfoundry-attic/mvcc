@@ -7,6 +7,6 @@ import (
 )
 
 func main() {
-	server := diegox.NewStagingServer()
+	server := diegox.NewBBSServer()
 	log.Fatal(server.ListenAndServe(":8889"))
 }

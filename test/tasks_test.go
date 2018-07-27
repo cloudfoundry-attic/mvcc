@@ -69,7 +69,7 @@ var _ = Describe("Tasks", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		FIt("succeeds when the subject has `task.read` for the parent space", func() {
+		It("succeeds when the subject has `task.read` for the parent space", func() {
 			permission := perm.Permission{
 				Action:          "task.read",
 				ResourcePattern: space.UUID,

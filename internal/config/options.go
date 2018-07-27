@@ -51,6 +51,12 @@ func WithUAAInternalURL(internalURL string) Option {
 	}
 }
 
+func WithBBSURL(url string) Option {
+	return func(c *config) {
+		c.Diego.BBS.URL = url
+	}
+}
+
 type config struct {
 	ExternalPort                int           `yaml:"external_port"`
 	LocalRoute                  string        `yaml:"local_route"`
