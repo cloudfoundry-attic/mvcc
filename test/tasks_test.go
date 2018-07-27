@@ -15,13 +15,14 @@ var _ = Describe("Tasks", func() {
 	Describe("GET /v3/tasks/:guid", func() {
 		var (
 			space mvcc.Space
+			org   mvcc.Organization
 			task  mvcc.Task
 		)
 
 		BeforeEach(func() {
 			var err error
 
-			org, err := cc.V3CreateOrganization(admin.AccessToken)
+			org, err = cc.V3CreateOrganization(admin.AccessToken)
 			Expect(err).NotTo(HaveOccurred())
 
 			space, err = cc.V3CreateSpace(admin.AccessToken, org)
@@ -35,7 +36,6 @@ var _ = Describe("Tasks", func() {
 
 			build, err := cc.V3CreateBuild(admin.AccessToken, pkg)
 			Expect(err).NotTo(HaveOccurred())
-			// Expect(build.DropletUUID).NotTo(Equal(""))
 
 			if err != nil {
 				pkg, err = cc.V3GetPackage(admin.AccessToken, pkg.UUID)
@@ -44,7 +44,6 @@ var _ = Describe("Tasks", func() {
 			}
 			Expect(err).NotTo(HaveOccurred())
 
-			fmt.Println("successful build:", build)
 			var dropletUUID string
 
 			timer := time.NewTimer(time.Second * 5)
@@ -89,12 +88,51 @@ var _ = Describe("Tasks", func() {
 			Expect(t).To(Equal(task))
 		})
 
+		It("succeeds when the subject has `task.read` for the parent org", func() {
+			permission := perm.Permission{
+				Action:          "task.read",
+				ResourcePattern: org.UUID,
+			}
+			roleName := mvcc.RandomUUID("org-read-task")
+
+			_, err := permClient.CreateRole(context.Background(), roleName, permission)
+			Expect(err).NotTo(HaveOccurred())
+
+			defer permClient.DeleteRole(context.Background(), roleName)
+
+			err = permClient.AssignRole(context.Background(), roleName, actor)
+			Expect(err).NotTo(HaveOccurred())
+
+			t, err := cc.V3GetTask(user.AccessToken, task.UUID)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(t).To(Equal(task))
+		})
+
 		It("fails when the subject has `task.read` for a different space", func() {
 			permission := perm.Permission{
 				Action:          "task.read",
 				ResourcePattern: mvcc.RandomUUID("other-space"),
 			}
 			roleName := mvcc.RandomUUID("space-read-task")
+
+			_, err := permClient.CreateRole(context.Background(), roleName, permission)
+			Expect(err).NotTo(HaveOccurred())
+
+			defer permClient.DeleteRole(context.Background(), roleName)
+
+			err = permClient.AssignRole(context.Background(), roleName, actor)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = cc.V3GetTask(user.AccessToken, task.UUID)
+			Expect(err).To(MatchError(mvcc.ErrNotFound))
+		})
+
+		It("fails when the subject has `task.read` for a different organization", func() {
+			permission := perm.Permission{
+				Action:          "task.read",
+				ResourcePattern: mvcc.RandomUUID("other-org"),
+			}
+			roleName := mvcc.RandomUUID("org-read-task")
 
 			_, err := permClient.CreateRole(context.Background(), roleName, permission)
 			Expect(err).NotTo(HaveOccurred())
