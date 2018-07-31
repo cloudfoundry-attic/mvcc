@@ -26,10 +26,8 @@ var _ = Describe("Baselines", func() {
 			})
 
 			AfterEach(func() {
-				orgURL := fmt.Sprintf("/v2/organizations/%s?recursive=true", org.UUID)
-				res, err := cc.Delete(orgURL, admin.AccessToken)
+				err := cc.V2DeleteOrganization(admin.AccessToken, org.UUID)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(res.StatusCode).To(Equal(204))
 			})
 
 			It("can create a space", func() {
