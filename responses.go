@@ -62,3 +62,7 @@ type v3TaskResponse struct {
 	GUID        string `json:"guid"`
 	DropletGUID string `json:"droplet_guid"`
 }
+
+type v3ListTasksResponse struct {
+	Resources []v3TaskResponse `json:"resources"`
+}

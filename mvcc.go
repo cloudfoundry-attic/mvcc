@@ -377,6 +377,26 @@ func (cc *MVCC) V3GetTask(authToken string, taskUUID string) (Task, error) {
 	return task, nil
 }
 
+func (cc *MVCC) V3ListTasks(authToken string) ([]Task, error) {
+	var tasks []Task
+	var taskResponses v3ListTasksResponse
+
+	path := "/v3/tasks"
+	res, err := cc.Get(path, authToken, &taskResponses)
+	if err != nil {
+		return tasks, err
+	}
+	if res.StatusCode != 200 {
+		return tasks, convertStatusCode(res.StatusCode)
+	}
+
+	for _, taskResponse := range taskResponses.Resources {
+		tasks = append(tasks, Task{UUID: taskResponse.GUID})
+	}
+
+	return tasks, nil
+}
+
 type dialMVCCOpts struct {
 	port int
 

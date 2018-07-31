@@ -30,6 +30,7 @@ func NewBBSServer(opts ...BBSServerOption) *BBSServer {
 
 	mux := &http.ServeMux{}
 	mux.HandleFunc("/v1/tasks/desire.r2", desireTaskHandler(logger))
+	mux.HandleFunc("/v1/desired_lrp/remove", nullHandler(logger))
 
 	return &BBSServer{
 		logger: logger,
@@ -71,6 +72,12 @@ type bbsServerOptions struct {
 func defaultBBSServerOptions() *bbsServerOptions {
 	return &bbsServerOptions{
 		logger: lagertest.NewTestLogger("fake-bbs"),
+	}
+}
+
+func nullHandler(logger lager.Logger) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
 	}
 }
 
