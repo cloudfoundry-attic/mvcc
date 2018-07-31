@@ -207,5 +207,54 @@ var _ = Describe("Tasks", func() {
 				Expect(tasks).To(HaveLen(0))
 			})
 		})
+
+		Context("when there are multiple tasks belonging to an organization", func() {
+			BeforeEach(func() {
+				anotherTask, err = cc.V3CreateTask(admin.AccessToken, app, dropletUUID)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("returns both tasks when the subject has `task.read` for the parent space", func() {
+				permission := perm.Permission{
+					Action:          "task.read",
+					ResourcePattern: org.UUID,
+				}
+				roleName := mvcc.RandomUUID("org-read-task")
+
+				_, err := permClient.CreateRole(context.Background(), roleName, permission)
+				Expect(err).NotTo(HaveOccurred())
+
+				defer permClient.DeleteRole(context.Background(), roleName)
+
+				err = permClient.AssignRole(context.Background(), roleName, actor)
+				Expect(err).NotTo(HaveOccurred())
+
+				tasks, err := cc.V3ListTasks(user.AccessToken)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(tasks).To(HaveLen(2))
+				Expect(tasks).To(ContainElement(task))
+				Expect(tasks).To(ContainElement(anotherTask))
+			})
+
+			It("returns no tasks when the subject has `task.read` for another space", func() {
+				permission := perm.Permission{
+					Action:          "task.read",
+					ResourcePattern: "some-other-org",
+				}
+				roleName := mvcc.RandomUUID("org-read-task")
+
+				_, err := permClient.CreateRole(context.Background(), roleName, permission)
+				Expect(err).NotTo(HaveOccurred())
+
+				defer permClient.DeleteRole(context.Background(), roleName)
+
+				err = permClient.AssignRole(context.Background(), roleName, actor)
+				Expect(err).NotTo(HaveOccurred())
+
+				tasks, err := cc.V3ListTasks(user.AccessToken)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(tasks).To(HaveLen(0))
+			})
+		})
 	})
 })
