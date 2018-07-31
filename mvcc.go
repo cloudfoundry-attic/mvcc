@@ -191,6 +191,20 @@ func (cc *MVCC) V3CreateOrganization(authToken string) (Organization, error) {
 	return org, convertStatusCode(res.StatusCode)
 }
 
+func (cc *MVCC) V2DeleteOrganization(authToken, uuid string) error {
+	orgUrl := fmt.Sprintf("/v2/organizations/%s?recursive=true", uuid)
+	res, err := cc.Delete(orgUrl, authToken)
+
+	if err != nil {
+		return err
+	}
+	if res.StatusCode == 204 {
+		return nil
+	}
+
+	return convertStatusCode(res.StatusCode)
+}
+
 func (cc *MVCC) V3CreateSpace(authToken string, parentOrg Organization) (Space, error) {
 	var space Space
 	var s v3SpaceResponse
