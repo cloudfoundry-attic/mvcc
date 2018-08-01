@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/mvcc"
+	. "code.cloudfoundry.org/mvcc/helpers"
 	"code.cloudfoundry.org/perm/pkg/perm"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -77,7 +78,7 @@ var _ = Describe("Tasks", func() {
 		It("succeeds when the subject has `task.read` for the parent space", func() {
 			permission := perm.Permission{
 				Action:          "task.read",
-				ResourcePattern: space.UUID,
+				ResourcePattern: SpaceResourceID(org.UUID, space.UUID),
 			}
 			roleName := mvcc.RandomUUID("space-read-task")
 
@@ -97,7 +98,7 @@ var _ = Describe("Tasks", func() {
 		It("succeeds when the subject has `task.read` for the parent org", func() {
 			permission := perm.Permission{
 				Action:          "task.read",
-				ResourcePattern: org.UUID,
+				ResourcePattern: OrgResourceID(org.UUID),
 			}
 			roleName := mvcc.RandomUUID("org-read-task")
 
@@ -117,7 +118,7 @@ var _ = Describe("Tasks", func() {
 		It("fails when the subject has `task.read` for a different space", func() {
 			permission := perm.Permission{
 				Action:          "task.read",
-				ResourcePattern: mvcc.RandomUUID("other-space"),
+				ResourcePattern: SpaceResourceID(org.UUID, mvcc.RandomUUID("other-space")),
 			}
 			roleName := mvcc.RandomUUID("space-read-task")
 
@@ -136,7 +137,7 @@ var _ = Describe("Tasks", func() {
 		It("fails when the subject has `task.read` for a different organization", func() {
 			permission := perm.Permission{
 				Action:          "task.read",
-				ResourcePattern: mvcc.RandomUUID("other-org"),
+				ResourcePattern: OrgResourceID(mvcc.RandomUUID("other-org")),
 			}
 			roleName := mvcc.RandomUUID("org-read-task")
 
@@ -168,7 +169,7 @@ var _ = Describe("Tasks", func() {
 			It("returns both tasks when the subject has `task.read` for the parent space", func() {
 				permission := perm.Permission{
 					Action:          "task.read",
-					ResourcePattern: space.UUID,
+					ResourcePattern: SpaceResourceID(org.UUID, space.UUID),
 				}
 				roleName := mvcc.RandomUUID("space-read-task")
 
@@ -190,7 +191,7 @@ var _ = Describe("Tasks", func() {
 			It("returns no tasks when the subject has `task.read` for another space", func() {
 				permission := perm.Permission{
 					Action:          "task.read",
-					ResourcePattern: "some-other-space",
+					ResourcePattern: SpaceResourceID(org.UUID, "some-other-space"),
 				}
 				roleName := mvcc.RandomUUID("space-read-task")
 
@@ -214,10 +215,10 @@ var _ = Describe("Tasks", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("returns both tasks when the subject has `task.read` for the parent space", func() {
+			It("returns both tasks when the subject has `task.read` for the parent org", func() {
 				permission := perm.Permission{
 					Action:          "task.read",
-					ResourcePattern: org.UUID,
+					ResourcePattern: OrgResourceID(org.UUID),
 				}
 				roleName := mvcc.RandomUUID("org-read-task")
 
@@ -236,10 +237,10 @@ var _ = Describe("Tasks", func() {
 				Expect(tasks).To(ContainElement(anotherTask))
 			})
 
-			It("returns no tasks when the subject has `task.read` for another space", func() {
+			It("returns no tasks when the subject has `task.read` for another org", func() {
 				permission := perm.Permission{
 					Action:          "task.read",
-					ResourcePattern: "some-other-org",
+					ResourcePattern: OrgResourceID("some-other-org"),
 				}
 				roleName := mvcc.RandomUUID("org-read-task")
 
